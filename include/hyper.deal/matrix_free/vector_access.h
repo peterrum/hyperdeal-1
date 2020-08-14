@@ -144,8 +144,8 @@ namespace hyperdeal
       template <int dim, int degree, typename VectorizedArrayType>
       void
       ReadWriteOperation<Number>::read_dof_values_face_batched(
-        const std::vector<double *> &data_others,
-        Number *                     dst,
+        const std::vector<double *> &global,
+        Number *                     local,
         const unsigned int           face_batch_number,
         const unsigned int           face_no,
         const unsigned int           side) const
@@ -160,15 +160,15 @@ namespace hyperdeal
              v < v_len;
              v++)
           {
-            auto i =
+            const auto sm_ptr =
               dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
-            srcs[v] = data_others[i.first] + i.second;
+            srcs[v] = global[sm_ptr.first] + sm_ptr.second;
           }
 
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
             face_all[side][face_batch_number])
           DA::template gatherv_face<v_len>(
-            srcs, face_no, dst, face_type[side][v_len * face_batch_number]);
+            srcs, face_no, local, face_type[side][v_len * face_batch_number]);
         else
           for (unsigned int v = 0;
                v < n_vectorization_lanes_filled[side][face_batch_number] &&
@@ -177,7 +177,7 @@ namespace hyperdeal
             DA::template gather_face<v_len>(
               srcs[v],
               face_no,
-              dst + v,
+              local + v,
               face_type[side][v_len * face_batch_number + v]);
       }
 
@@ -187,8 +187,8 @@ namespace hyperdeal
       template <int dim, int degree, typename VectorizedArrayType>
       void
       ReadWriteOperation<Number>::distribute_local_to_global_face_batched(
-        std::vector<double *> &data_others,
-        const Number *         src,
+        std::vector<double *> &global,
+        const Number *         local,
         const unsigned int     face_batch_number,
         const unsigned int     face_no,
         const unsigned int     side) const
@@ -203,16 +203,15 @@ namespace hyperdeal
              v < v_len;
              v++)
           {
-            auto i =
+            const auto sm_ptr =
               dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
-            dsts[v] = data_others[i.first] + i.second;
+            dsts[v] = global[sm_ptr.first] + sm_ptr.second;
           }
-
 
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
             face_all[side][face_batch_number])
           DA::template scatterv_face<v_len, true>(
-            dsts, face_no, src, face_type[side][v_len * face_batch_number]);
+            dsts, face_no, local, face_type[side][v_len * face_batch_number]);
         else
           for (unsigned int v = 0;
                v < n_vectorization_lanes_filled[side][face_batch_number] &&
@@ -221,7 +220,7 @@ namespace hyperdeal
             DA::template scatter_face<v_len, true>(
               dsts[v],
               face_no,
-              src + v,
+              local + v,
               face_type[side][v_len * face_batch_number + v]);
       }
 
