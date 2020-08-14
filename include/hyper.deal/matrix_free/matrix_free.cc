@@ -664,11 +664,6 @@ namespace hyperdeal
       std::make_shared<internal::MatrixFreeFunctions::Partitioner<Number>>(
         shape_info);
 
-    reader_writer = std::make_shared<
-      internal::MatrixFreeFunctions::ReadWriteOperation<Number>>(dof_info,
-                                                                 face_info,
-                                                                 shape_info);
-
     const int dim = dim_x + dim_v;
 
     // collect (global) information of each macro cell in phase space
@@ -937,7 +932,7 @@ namespace hyperdeal
                 dealii::ExcMessage(
                   "Only one dof_handler supported at the moment!"));
 
-    AssertThrow((partitioner != nullptr) && (reader_writer != nullptr),
+    AssertThrow((partitioner != nullptr),
                 dealii::ExcMessage("Partitioner has not been initialized!"));
 
     // setup vector
@@ -1292,15 +1287,6 @@ namespace hyperdeal
   MatrixFree<dim_x, dim_v, Number, VectorizedArrayType>::get_shape_info() const
   {
     return shape_info;
-  }
-
-
-
-  template <int dim_x, int dim_v, typename Number, typename VectorizedArrayType>
-  const internal::MatrixFreeFunctions::ReadWriteOperation<Number> &
-  MatrixFree<dim_x, dim_v, Number, VectorizedArrayType>::get_read_writer() const
-  {
-    return *reader_writer;
   }
 
 } // namespace hyperdeal

@@ -19,6 +19,7 @@
 #include <hyper.deal/base/config.h>
 
 #include <hyper.deal/matrix_free/fe_evaluation_base.h>
+#include <hyper.deal/matrix_free/read_write_operation.h>
 #include <hyper.deal/matrix_free/vector_access_internal.h>
 
 namespace hyperdeal
@@ -240,7 +241,10 @@ namespace hyperdeal
     {
       if (this->matrix_free.are_ghost_faces_supported())
         {
-          this->matrix_free.get_read_writer()
+          internal::MatrixFreeFunctions::ReadWriteOperation<Number>(
+            this->matrix_free.get_dof_info(),
+            this->matrix_free.get_face_info(),
+            this->matrix_free.get_shape_info())
             .template process_face<dim, degree>(
               internal::MatrixFreeFunctions::
                 VectorReader<Number, VectorizedArrayType>(),
@@ -296,7 +300,10 @@ namespace hyperdeal
     {
       if (this->matrix_free.are_ghost_faces_supported())
         {
-          this->matrix_free.get_read_writer()
+          internal::MatrixFreeFunctions::ReadWriteOperation<Number>(
+            this->matrix_free.get_dof_info(),
+            this->matrix_free.get_face_info(),
+            this->matrix_free.get_shape_info())
             .template process_face<dim, degree>(
               internal::MatrixFreeFunctions::
                 VectorDistributorLocalToGlobal<Number, VectorizedArrayType>(),

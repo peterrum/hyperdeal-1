@@ -24,7 +24,6 @@
 #include <hyper.deal/matrix_free/dof_info.h>
 #include <hyper.deal/matrix_free/face_info.h>
 #include <hyper.deal/matrix_free/id.h>
-#include <hyper.deal/matrix_free/read_write_operation.h>
 #include <hyper.deal/matrix_free/shape_info.h>
 #include <hyper.deal/matrix_free/vector_partitioner.h>
 
@@ -248,12 +247,6 @@ namespace hyperdeal
     const internal::MatrixFreeFunctions::ShapeInfo<Number> &
     get_shape_info() const;
 
-    /**
-     * Return vector read/writer.
-     */
-    const internal::MatrixFreeFunctions::ReadWriteOperation<Number> &
-    get_read_writer() const;
-
     MemoryConsumption
     memory_consumption() const
     {
@@ -309,13 +302,6 @@ namespace hyperdeal
      */
     mutable std::shared_ptr<internal::MatrixFreeFunctions::Partitioner<Number>>
       partitioner;
-
-    /**
-     * Reader/writer to process shared-memory vector.
-     */
-    mutable std::shared_ptr<
-      internal::MatrixFreeFunctions::ReadWriteOperation<Number>>
-      reader_writer;
 
     /**
      * Cell info.
