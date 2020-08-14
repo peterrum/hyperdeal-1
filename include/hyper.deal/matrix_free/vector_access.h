@@ -154,47 +154,31 @@ namespace hyperdeal
           VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
         static const int v_len = VectorizedArrayType::size();
 
-        Assert(side < 4,
-               dealii::ExcMessage(
-                 "Size of n_vectorization_lanes_filled does not match (1)."));
-        Assert(face_batch_number < n_vectorization_lanes_filled[side].size(),
-               dealii::ExcMessage(
-                 "Size of n_vectorization_lanes_filled does not match (2)."));
-        Assert(face_batch_number < face_all[side].size(),
-               dealii::ExcMessage(
-                 "Size of n_vectorization_lanes_filled does not match (2)."));
+        std::array<Number *, v_len> srcs;
+        for (unsigned int v = 0;
+             v < n_vectorization_lanes_filled[side][face_batch_number] &&
+             v < v_len;
+             v++)
+          {
+            auto i =
+              dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
+            srcs[v] = data_others[i.first] + i.second;
+          }
 
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
             face_all[side][face_batch_number])
-          {
-            std::array<Number *, v_len> srcs;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                srcs[v] = data_others[i.first] + i.second;
-              }
-            DA::template gatherv_face<v_len>(
-              srcs, face_no, dst, face_type[side][v_len * face_batch_number]);
-          }
+          DA::template gatherv_face<v_len>(
+            srcs, face_no, dst, face_type[side][v_len * face_batch_number]);
         else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[side][face_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                DA::template gather_face<v_len>(
-                  data_others[i.first] + i.second,
-                  face_no,
-                  dst + v,
-                  face_type[side][v_len * face_batch_number + v]);
-              }
-          }
+          for (unsigned int v = 0;
+               v < n_vectorization_lanes_filled[side][face_batch_number] &&
+               v < v_len;
+               v++)
+            DA::template gather_face<v_len>(
+              srcs[v],
+              face_no,
+              dst + v,
+              face_type[side][v_len * face_batch_number + v]);
       }
 
 
@@ -213,37 +197,32 @@ namespace hyperdeal
           VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
         static const int v_len = VectorizedArrayType::size();
 
+        std::array<Number *, v_len> dsts;
+        for (unsigned int v = 0;
+             v < n_vectorization_lanes_filled[side][face_batch_number] &&
+             v < v_len;
+             v++)
+          {
+            auto i =
+              dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
+            dsts[v] = data_others[i.first] + i.second;
+          }
+
+
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
             face_all[side][face_batch_number])
-          {
-            std::array<Number *, v_len> dsts;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                dsts[v] = data_others[i.first] + i.second;
-              }
-            DA::template scatterv_face<v_len, true>(
-              dsts, face_no, src, face_type[side][v_len * face_batch_number]);
-          }
+          DA::template scatterv_face<v_len, true>(
+            dsts, face_no, src, face_type[side][v_len * face_batch_number]);
         else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[side][face_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                DA::template scatter_face<v_len, true>(
-                  data_others[i.first] + i.second,
-                  face_no,
-                  src + v,
-                  face_type[side][v_len * face_batch_number + v]);
-              }
-          }
+          for (unsigned int v = 0;
+               v < n_vectorization_lanes_filled[side][face_batch_number] &&
+               v < v_len;
+               v++)
+            DA::template scatter_face<v_len, true>(
+              dsts[v],
+              face_no,
+              src + v,
+              face_type[side][v_len * face_batch_number + v]);
       }
 
 
