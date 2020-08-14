@@ -34,10 +34,10 @@ namespace hyperdeal
        * TODO: move to deal.II or make it similar to VectorReader/VectorWriter.
        */
       template <typename Number>
-      class VectorReaderWriter
+      class ReadWriteOperation
       {
       public:
-        VectorReaderWriter(
+        ReadWriteOperation(
           const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
           const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info);
 
@@ -87,7 +87,7 @@ namespace hyperdeal
 
 
       template <typename Number>
-      VectorReaderWriter<Number>::VectorReaderWriter(
+      ReadWriteOperation<Number>::ReadWriteOperation(
         const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
         const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info)
         : n_vectorization_lanes_filled(dof_info.n_vectorization_lanes_filled)
@@ -101,7 +101,7 @@ namespace hyperdeal
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
-      VectorReaderWriter<Number>::read_dof_values_cell_batched(
+      ReadWriteOperation<Number>::read_dof_values_cell_batched(
         const std::vector<double *> &data_others,
         VectorizedArrayType *        dst,
         const unsigned int           cell_batch_number) const
@@ -142,7 +142,7 @@ namespace hyperdeal
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
-      VectorReaderWriter<Number>::set_dof_values_cell_batched(
+      ReadWriteOperation<Number>::set_dof_values_cell_batched(
         std::vector<double *> &    data_others,
         const VectorizedArrayType *src,
         const unsigned int         cell_batch_number) const
@@ -184,7 +184,7 @@ namespace hyperdeal
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
-      VectorReaderWriter<Number>::read_dof_values_face_batched(
+      ReadWriteOperation<Number>::read_dof_values_face_batched(
         const std::vector<double *> &data_others,
         Number *                     dst,
         const unsigned int           face_batch_number,
@@ -243,7 +243,7 @@ namespace hyperdeal
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
-      VectorReaderWriter<Number>::distribute_local_to_global_face_batched(
+      ReadWriteOperation<Number>::distribute_local_to_global_face_batched(
         std::vector<double *> &data_others,
         const Number *         src,
         const unsigned int     face_batch_number,

@@ -251,7 +251,7 @@ namespace hyperdeal
     /**
      * Return vector read/writer.
      */
-    const internal::MatrixFreeFunctions::VectorReaderWriter<Number> &
+    const internal::MatrixFreeFunctions::ReadWriteOperation<Number> &
     get_read_writer() const;
 
     MemoryConsumption
@@ -314,7 +314,7 @@ namespace hyperdeal
      * Reader/writer to process shared-memory vector.
      */
     mutable std::shared_ptr<
-      internal::MatrixFreeFunctions::VectorReaderWriter<Number>>
+      internal::MatrixFreeFunctions::ReadWriteOperation<Number>>
       reader_writer;
 
     /**

@@ -665,7 +665,7 @@ namespace hyperdeal
         shape_info);
 
     reader_writer = std::make_shared<
-      internal::MatrixFreeFunctions::VectorReaderWriter<Number>>(dof_info,
+      internal::MatrixFreeFunctions::ReadWriteOperation<Number>>(dof_info,
                                                                  face_info);
 
     const int dim = dim_x + dim_v;
@@ -1296,7 +1296,7 @@ namespace hyperdeal
 
 
   template <int dim_x, int dim_v, typename Number, typename VectorizedArrayType>
-  const internal::MatrixFreeFunctions::VectorReaderWriter<Number> &
+  const internal::MatrixFreeFunctions::ReadWriteOperation<Number> &
   MatrixFree<dim_x, dim_v, Number, VectorizedArrayType>::get_read_writer() const
   {
     return *reader_writer;
