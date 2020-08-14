@@ -13,8 +13,8 @@
 //
 // ---------------------------------------------------------------------
 
-#ifndef DEALII_LINEARALGEBRA_SHAREDMPI_EVALUATION
-#define DEALII_LINEARALGEBRA_SHAREDMPI_EVALUATION
+#ifndef HYPERDEAL_MATRIX_FREE_READ_WRITE_OPERATION
+#define HYPERDEAL_MATRIX_FREE_READ_WRITE_OPERATION
 
 #include <hyper.deal/base/config.h>
 
@@ -218,75 +218,6 @@ namespace hyperdeal
                 }
             }
       }
-
-
-
-      template <typename Number, typename VectorizedArrayType>
-      struct VectorReader
-      {
-        void
-        process_dof(const Number &global, Number &local) const
-        {
-          local = global;
-        }
-
-        void
-        process_dofs_vectorized_transpose(
-          const unsigned int dofs_per_cell,
-          const std::array<Number *, VectorizedArrayType::size()> &global_ptr,
-          VectorizedArrayType *                                    local) const
-        {
-          vectorized_load_and_transpose(dofs_per_cell, global_ptr, local);
-        }
-      };
-
-
-
-      template <typename Number, typename VectorizedArrayType>
-      struct VectorDistributorLocalToGlobal
-      {
-        void
-        process_dof(Number &global, const Number &local) const
-        {
-          global += local;
-        }
-
-        void
-        process_dofs_vectorized_transpose(
-          const unsigned int                                 dofs_per_cell,
-          std::array<Number *, VectorizedArrayType::size()> &global_ptr,
-          const VectorizedArrayType *                        local) const
-        {
-          vectorized_transpose_and_store(true,
-                                         dofs_per_cell,
-                                         local,
-                                         global_ptr);
-        }
-      };
-
-
-
-      template <typename Number, typename VectorizedArrayType>
-      struct VectorSetter
-      {
-        void
-        process_dof(Number &global, const Number &local) const
-        {
-          global = local;
-        }
-
-        void
-        process_dofs_vectorized_transpose(
-          const unsigned int                                 dofs_per_cell,
-          std::array<Number *, VectorizedArrayType::size()> &global_ptr,
-          const VectorizedArrayType *                        local) const
-        {
-          vectorized_transpose_and_store(false,
-                                         dofs_per_cell,
-                                         local,
-                                         global_ptr);
-        }
-      };
 
     } // namespace MatrixFreeFunctions
   }   // namespace internal

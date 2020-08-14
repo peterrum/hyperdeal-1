@@ -19,6 +19,7 @@
 #include <hyper.deal/base/config.h>
 
 #include <hyper.deal/matrix_free/fe_evaluation_base.h>
+#include <hyper.deal/matrix_free/vector_access_internal.h>
 
 namespace hyperdeal
 {

@@ -24,8 +24,8 @@
 #include <hyper.deal/matrix_free/dof_info.h>
 #include <hyper.deal/matrix_free/face_info.h>
 #include <hyper.deal/matrix_free/id.h>
+#include <hyper.deal/matrix_free/read_write_operation.h>
 #include <hyper.deal/matrix_free/shape_info.h>
-#include <hyper.deal/matrix_free/vector_access.h>
 #include <hyper.deal/matrix_free/vector_partitioner.h>
 
 namespace hyperdeal

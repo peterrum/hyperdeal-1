@@ -21,6 +21,7 @@
 #include <deal.II/matrix_free/fe_evaluation.h>
 
 #include <hyper.deal/matrix_free/fe_evaluation_base.h>
+#include <hyper.deal/matrix_free/vector_access_internal.h>
 
 namespace hyperdeal
 {
