@@ -106,9 +106,9 @@ namespace hyperdeal
         VectorizedArrayType *        dst,
         const unsigned int           cell_batch_number) const
       {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
+        static const unsigned int v_len = VectorizedArrayType::size();
+        static const unsigned int n_dofs_per_cell =
+          dealii::Utilities::pow<unsigned int>(degree + 1, dim);
 
         if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
           {
@@ -119,11 +119,11 @@ namespace hyperdeal
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
                 srcs[v] = data_others[i.first] + i.second;
               }
-            dealii::vectorized_load_and_transpose(
-              dealii::Utilities::pow(degree + 1, dim), srcs, dst);
+            dealii::vectorized_load_and_transpose(n_dofs_per_cell, srcs, dst);
           }
         else
           {
+            std::array<Number *, v_len> srcs;
             for (unsigned int v = 0;
                  v < n_vectorization_lanes_filled[2][cell_batch_number] &&
                  v < v_len;
@@ -131,9 +131,15 @@ namespace hyperdeal
               {
                 auto i =
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                DA::template gather<v_len>(data_others[i.first] + i.second,
-                                           ((Number *)dst) + v);
+                srcs[v] = data_others[i.first] + i.second;
               }
+
+            for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
+              for (unsigned int v = 0;
+                   v < n_vectorization_lanes_filled[2][cell_batch_number] &&
+                   v < v_len;
+                   v++)
+                dst[i][v] = srcs[v][i];
           }
       }
 
