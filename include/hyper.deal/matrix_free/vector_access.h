@@ -41,19 +41,15 @@ namespace hyperdeal
           const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
           const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info);
 
-        template <int dim, int degree, typename VectorizedArrayType>
+        template <int dim,
+                  int degree,
+                  typename VectorOperation,
+                  typename VectorizedArrayType>
         void
-        read_dof_values_cell_batched(
-          const std::vector<double *> &data_others,
-          VectorizedArrayType *        dst,
-          const unsigned int           cell_batch_number) const;
-
-
-        template <int dim, int degree, typename VectorizedArrayType>
-        void
-        set_dof_values_cell_batched(std::vector<double *> &    data_others,
-                                    const VectorizedArrayType *src,
-                                    const unsigned int cell_batch_number) const;
+        process_cell(const VectorOperation &      operation,
+                     const std::vector<double *> &data_others,
+                     VectorizedArrayType *        dst,
+                     const unsigned int           cell_batch_number) const;
 
 
         template <int dim, int degree, typename VectorizedArrayType>
@@ -99,9 +95,13 @@ namespace hyperdeal
 
 
       template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
+      template <int dim,
+                int degree,
+                typename VectorOperation,
+                typename VectorizedArrayType>
       void
-      ReadWriteOperation<Number>::read_dof_values_cell_batched(
+      ReadWriteOperation<Number>::process_cell(
+        const VectorOperation &      operation,
         const std::vector<double *> &global,
         VectorizedArrayType *        local,
         const unsigned int           cell_batch_number) const
@@ -125,9 +125,9 @@ namespace hyperdeal
         // step 2: process dofs
         if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
           // case 1: all lanes are filled -> use optimized function
-          dealii::vectorized_load_and_transpose(n_dofs_per_cell,
-                                                global_ptr,
-                                                local);
+          operation.process_dofs_vectorized_transpose(n_dofs_per_cell,
+                                                      global_ptr,
+                                                      local);
         else
           // case 2: some lanes are empty
           for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
@@ -135,50 +135,7 @@ namespace hyperdeal
                  v < n_vectorization_lanes_filled[2][cell_batch_number] &&
                  v < v_len;
                  v++)
-              local[i][v] = global_ptr[v][i];
-      }
-
-
-
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
-      ReadWriteOperation<Number>::set_dof_values_cell_batched(
-        std::vector<double *> &    global,
-        const VectorizedArrayType *local,
-        const unsigned int         cell_batch_number) const
-      {
-        static const unsigned int v_len = VectorizedArrayType::size();
-        static const unsigned int n_dofs_per_cell =
-          dealii::Utilities::pow<unsigned int>(degree + 1, dim);
-
-        // step 1: get pointer to the first dof of the cell in the sm-domain
-        std::array<Number *, v_len> global_ptr;
-        for (unsigned int v = 0;
-             v < n_vectorization_lanes_filled[2][cell_batch_number] &&
-             v < v_len;
-             v++)
-          {
-            const auto sm_ptr =
-              dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-            global_ptr[v] = global[sm_ptr.first] + sm_ptr.second;
-          }
-
-        // step 2: process dofs
-        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
-          // case 1: all lanes are filled -> use optimized function
-          dealii::vectorized_transpose_and_store(false,
-                                                 n_dofs_per_cell,
-                                                 local,
-                                                 global_ptr);
-        else
-          // case 2: some lanes are empty
-          for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[2][cell_batch_number] &&
-                 v < v_len;
-                 v++)
-              global_ptr[v][i] = local[i][v];
+              operation.process_dof(global_ptr[v][i], local[i][v]);
       }
 
 
@@ -288,6 +245,51 @@ namespace hyperdeal
               }
           }
       }
+
+
+
+      template <typename Number, typename VectorizedArrayType>
+      struct VectorReader
+      {
+        void
+        process_dof(const Number &global, Number &local) const
+        {
+          local = global;
+        }
+
+        void
+        process_dofs_vectorized_transpose(
+          const unsigned int dofs_per_cell,
+          const std::array<Number *, VectorizedArrayType::size()> &global_ptr,
+          VectorizedArrayType *                                    local) const
+        {
+          vectorized_load_and_transpose(dofs_per_cell, global_ptr, local);
+        }
+      };
+
+
+
+      template <typename Number, typename VectorizedArrayType>
+      struct VectorSetter
+      {
+        void
+        process_dof(Number &global, const Number &local) const
+        {
+          global = local;
+        }
+
+        void
+        process_dofs_vectorized_transpose(
+          const unsigned int                                 dofs_per_cell,
+          std::array<Number *, VectorizedArrayType::size()> &global_ptr,
+          const VectorizedArrayType *                        local) const
+        {
+          vectorized_transpose_and_store(false,
+                                         dofs_per_cell,
+                                         local,
+                                         global_ptr);
+        }
+      };
 
     } // namespace MatrixFreeFunctions
   }   // namespace internal

@@ -114,11 +114,12 @@ namespace hyperdeal
     read_dof_values(const dealii::LinearAlgebra::SharedMPI::Vector<Number> &src,
                     VectorizedArrayType *data) const
     {
-      this->matrix_free.get_read_writer()
-        .template read_dof_values_cell_batched<dim,
-                                               degree,
-                                               VectorizedArrayType>(
-          src.other_values(), data, this->macro);
+      this->matrix_free.get_read_writer().template process_cell<dim, degree>(
+        internal::MatrixFreeFunctions::VectorReader<Number,
+                                                    VectorizedArrayType>(),
+        src.other_values(),
+        data,
+        this->macro);
     }
 
 
@@ -140,9 +141,12 @@ namespace hyperdeal
     void
     set_dof_values(dealii::LinearAlgebra::SharedMPI::Vector<Number> &dst) const
     {
-      this->matrix_free.get_read_writer()
-        .template set_dof_values_cell_batched<dim, degree, VectorizedArrayType>(
-          dst.other_values(), &this->data[0], this->macro);
+      this->matrix_free.get_read_writer().template process_cell<dim, degree>(
+        internal::MatrixFreeFunctions::VectorSetter<Number,
+                                                    VectorizedArrayType>(),
+        dst.other_values(),
+        &this->data[0],
+        this->macro);
     }
 
 
