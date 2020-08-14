@@ -165,7 +165,7 @@ namespace hyperdeal
         static const unsigned int n_dofs_per_face =
           dealii::Utilities::pow<unsigned int>(degree + 1, dim - 1);
 
-        std::array<Number *, v_len> srcs;
+        std::array<Number *, v_len> global_ptr;
         for (unsigned int v = 0;
              v < n_vectorization_lanes_filled[side][face_batch_number] &&
              v < v_len;
@@ -173,7 +173,7 @@ namespace hyperdeal
           {
             const auto sm_ptr =
               dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
-            srcs[v] = global[sm_ptr.first] + sm_ptr.second;
+            global_ptr[v] = global[sm_ptr.first] + sm_ptr.second;
           }
 
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
@@ -184,7 +184,7 @@ namespace hyperdeal
                 // case 1: read from buffers
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                   for (unsigned int v = 0; v < v_len; ++v)
-                    operation.process_dof(srcs[v][i], local[i][v]);
+                    operation.process_dof(global_ptr[v][i], local[i][v]);
               }
             else
               {
@@ -192,7 +192,7 @@ namespace hyperdeal
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                   for (unsigned int v = 0; v < v_len; ++v)
                     operation.process_dof(
-                      srcs[v][face_to_cell_index_nodal[face_no][i]],
+                      global_ptr[v][face_to_cell_index_nodal[face_no][i]],
                       local[i][v]);
               }
           }
@@ -206,14 +206,14 @@ namespace hyperdeal
                 {
                   // case 1: read from buffers
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                    operation.process_dof(srcs[v][i], local[i][v]);
+                    operation.process_dof(global_ptr[v][i], local[i][v]);
                 }
               else
                 {
                   // case 2: read from shared memory
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                     operation.process_dof(
-                      srcs[v][face_to_cell_index_nodal[face_no][i]],
+                      global_ptr[v][face_to_cell_index_nodal[face_no][i]],
                       local[i][v]);
                 }
             }
