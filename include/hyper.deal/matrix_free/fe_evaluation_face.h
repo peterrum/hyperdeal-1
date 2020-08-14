@@ -244,7 +244,7 @@ namespace hyperdeal
                                                    degree,
                                                    VectorizedArrayType>(
               src.other_values(),
-              (Number *)data,
+              data,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
               is_ecl ? this->face_no ^ 1 : this->face_no,
               !is_minus_face + (is_ecl ? 2 : 0));

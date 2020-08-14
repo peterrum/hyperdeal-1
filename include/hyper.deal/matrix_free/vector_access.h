@@ -55,7 +55,7 @@ namespace hyperdeal
         template <int dim, int degree, typename VectorizedArrayType>
         void
         read_dof_values_face_batched(const std::vector<double *> &data_others,
-                                     Number *                     dst,
+                                     VectorizedArrayType *        dst,
                                      const unsigned int face_batch_number,
                                      const unsigned int face_no,
                                      const unsigned int side) const;
@@ -145,7 +145,7 @@ namespace hyperdeal
       void
       ReadWriteOperation<Number>::read_dof_values_face_batched(
         const std::vector<double *> &global,
-        Number *                     local,
+        VectorizedArrayType *        local,
         const unsigned int           face_batch_number,
         const unsigned int           face_no,
         const unsigned int           side) const
@@ -174,14 +174,16 @@ namespace hyperdeal
             if (face_type[side][v_len * face_batch_number])
               {
                 // case 1: read from buffers
-                memcpy_strided_v_gather<v_len, Number, false>(local,
-                                                              srcs,
-                                                              n_dofs_per_face);
+                for (unsigned int i = 0; i < n_dofs_per_face; ++i)
+                  for (unsigned int v = 0; v < v_len; ++v)
+                    local[i][v] = srcs[v][i];
               }
             else
               {
                 // case 2: read from shared memory
-                DA::template gatherv_face_internal<v_len>(srcs, face_no, local);
+                DA::template gatherv_face_internal<v_len>(srcs,
+                                                          face_no,
+                                                          (Number *)local);
               }
           }
         else
@@ -193,16 +195,14 @@ namespace hyperdeal
               if (face_type[side][v_len * face_batch_number + v])
                 {
                   // case 1: read from buffers
-                  memcpy_strided<v_len, 1, Number, false>(local + v,
-                                                          srcs[v],
-                                                          n_dofs_per_face);
+                  for (unsigned int i = 0; i < n_dofs_per_face; ++i)
+                    local[i][v] = srcs[v][i];
                 }
               else
                 {
                   // case 2: read from shared memory
-                  DA::template gather_face_internal<v_len>(srcs[v],
-                                                           face_no,
-                                                           local + v);
+                  DA::template gather_face_internal<v_len>(
+                    srcs[v], face_no, ((Number *)local) + v);
                 }
             }
       }
