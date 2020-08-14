@@ -136,6 +136,49 @@ namespace hyperdeal
           }
       }
 
+
+
+      template <typename Number>
+      template <int dim, int degree, typename VectorizedArrayType>
+      void
+      VectorReaderWriter<Number>::set_dof_values_cell_batched(
+        std::vector<double *> &data_others,
+        const Number *         src,
+        const unsigned int     cell_batch_number) const
+      {
+        using DA =
+          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
+        static const int v_len = VectorizedArrayType::size();
+
+        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
+          {
+            std::array<Number *, v_len> dsts;
+            for (unsigned int v = 0; v < v_len; v++)
+              {
+                auto i =
+                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
+                dsts[v] = data_others[i.first] + i.second;
+              }
+            DA::template scatterv<false>(dsts, src);
+          }
+        else
+          {
+            for (unsigned int v = 0;
+                 v < n_vectorization_lanes_filled[2][cell_batch_number] &&
+                 v < v_len;
+                 v++)
+              {
+                auto i =
+                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
+                DA::template scatter<v_len, false>(data_others[i.first] +
+                                                     i.second,
+                                                   src + v);
+              }
+          }
+      }
+
+
+
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
@@ -193,6 +236,8 @@ namespace hyperdeal
           }
       }
 
+
+
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
@@ -236,45 +281,6 @@ namespace hyperdeal
                   face_no,
                   src + v,
                   face_type[side][v_len * face_batch_number + v]);
-              }
-          }
-      }
-
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
-      VectorReaderWriter<Number>::set_dof_values_cell_batched(
-        std::vector<double *> &data_others,
-        const Number *         src,
-        const unsigned int     cell_batch_number) const
-      {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
-        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
-          {
-            std::array<Number *, v_len> dsts;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                dsts[v] = data_others[i.first] + i.second;
-              }
-            DA::template scatterv<false>(dsts, src);
-          }
-        else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[2][cell_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                DA::template scatter<v_len, false>(data_others[i.first] +
-                                                     i.second,
-                                                   src + v);
               }
           }
       }
