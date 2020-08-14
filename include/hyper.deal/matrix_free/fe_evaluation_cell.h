@@ -118,7 +118,7 @@ namespace hyperdeal
         .template read_dof_values_cell_batched<dim,
                                                degree,
                                                VectorizedArrayType>(
-          src.other_values(), (Number *)data, this->macro);
+          src.other_values(), data, this->macro);
     }
 
 
@@ -142,7 +142,7 @@ namespace hyperdeal
     {
       this->matrix_free.get_read_writer()
         .template set_dof_values_cell_batched<dim, degree, VectorizedArrayType>(
-          dst.other_values(), (Number *)&this->data[0], this->macro);
+          dst.other_values(), &this->data[0], this->macro);
     }
 
 

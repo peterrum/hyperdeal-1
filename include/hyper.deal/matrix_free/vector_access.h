@@ -45,14 +45,14 @@ namespace hyperdeal
         void
         read_dof_values_cell_batched(
           const std::vector<double *> &data_others,
-          Number *                     dst,
+          VectorizedArrayType *        dst,
           const unsigned int           cell_batch_number) const;
 
 
         template <int dim, int degree, typename VectorizedArrayType>
         void
-        set_dof_values_cell_batched(std::vector<double *> &data_others,
-                                    const Number *         src,
+        set_dof_values_cell_batched(std::vector<double *> &    data_others,
+                                    const VectorizedArrayType *src,
                                     const unsigned int cell_batch_number) const;
 
 
@@ -103,7 +103,7 @@ namespace hyperdeal
       void
       VectorReaderWriter<Number>::read_dof_values_cell_batched(
         const std::vector<double *> &data_others,
-        Number *                     dst,
+        VectorizedArrayType *        dst,
         const unsigned int           cell_batch_number) const
       {
         using DA =
@@ -119,7 +119,8 @@ namespace hyperdeal
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
                 srcs[v] = data_others[i.first] + i.second;
               }
-            DA::gatherv(srcs, dst);
+            dealii::vectorized_load_and_transpose(
+              dealii::Utilities::pow(degree + 1, dim), srcs, dst);
           }
         else
           {
@@ -131,7 +132,7 @@ namespace hyperdeal
                 auto i =
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
                 DA::template gather<v_len>(data_others[i.first] + i.second,
-                                           dst + v);
+                                           ((Number *)dst) + v);
               }
           }
       }
@@ -142,9 +143,9 @@ namespace hyperdeal
       template <int dim, int degree, typename VectorizedArrayType>
       void
       VectorReaderWriter<Number>::set_dof_values_cell_batched(
-        std::vector<double *> &data_others,
-        const Number *         src,
-        const unsigned int     cell_batch_number) const
+        std::vector<double *> &    data_others,
+        const VectorizedArrayType *src,
+        const unsigned int         cell_batch_number) const
       {
         using DA =
           VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
@@ -159,7 +160,8 @@ namespace hyperdeal
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
                 dsts[v] = data_others[i.first] + i.second;
               }
-            DA::template scatterv<false>(dsts, src);
+            dealii::vectorized_transpose_and_store(
+              false, dealii::Utilities::pow(degree + 1, dim), src, dsts);
           }
         else
           {
@@ -172,7 +174,7 @@ namespace hyperdeal
                   dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
                 DA::template scatter<v_len, false>(data_others[i.first] +
                                                      i.second,
-                                                   src + v);
+                                                   ((Number *)src) + v);
               }
           }
       }
