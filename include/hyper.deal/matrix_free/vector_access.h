@@ -67,17 +67,6 @@ namespace hyperdeal
                      const unsigned int           face_no,
                      const unsigned int           side) const;
 
-
-        template <int dim, int degree, typename VectorizedArrayType>
-        void
-        distribute_local_to_global_face_batched(
-          std::vector<double *> &data_others,
-          const Number *         src,
-          const unsigned int     face_batch_number,
-          const unsigned int     face_no,
-          const unsigned int     side) const;
-
-
       private:
         const std::array<std::vector<unsigned char>, 4>
           &n_vectorization_lanes_filled;
@@ -226,49 +215,6 @@ namespace hyperdeal
 
 
 
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
-      ReadWriteOperation<Number>::distribute_local_to_global_face_batched(
-        std::vector<double *> &global,
-        const Number *         local,
-        const unsigned int     face_batch_number,
-        const unsigned int     face_no,
-        const unsigned int     side) const
-      {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
-        std::array<Number *, v_len> dsts;
-        for (unsigned int v = 0;
-             v < n_vectorization_lanes_filled[side][face_batch_number] &&
-             v < v_len;
-             v++)
-          {
-            const auto sm_ptr =
-              dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
-            dsts[v] = global[sm_ptr.first] + sm_ptr.second;
-          }
-
-        if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
-            face_all[side][face_batch_number])
-          DA::template scatterv_face<v_len, true>(
-            dsts, face_no, local, face_type[side][v_len * face_batch_number]);
-        else
-          for (unsigned int v = 0;
-               v < n_vectorization_lanes_filled[side][face_batch_number] &&
-               v < v_len;
-               v++)
-            DA::template scatter_face<v_len, true>(
-              dsts[v],
-              face_no,
-              local + v,
-              face_type[side][v_len * face_batch_number + v]);
-      }
-
-
-
       template <typename Number, typename VectorizedArrayType>
       struct VectorReader
       {
@@ -285,6 +231,30 @@ namespace hyperdeal
           VectorizedArrayType *                                    local) const
         {
           vectorized_load_and_transpose(dofs_per_cell, global_ptr, local);
+        }
+      };
+
+
+
+      template <typename Number, typename VectorizedArrayType>
+      struct VectorDistributorLocalToGlobal
+      {
+        void
+        process_dof(Number &global, const Number &local) const
+        {
+          global += local;
+        }
+
+        void
+        process_dofs_vectorized_transpose(
+          const unsigned int                                 dofs_per_cell,
+          std::array<Number *, VectorizedArrayType::size()> &global_ptr,
+          const VectorizedArrayType *                        local) const
+        {
+          vectorized_transpose_and_store(true,
+                                         dofs_per_cell,
+                                         local,
+                                         global_ptr);
         }
       };
 

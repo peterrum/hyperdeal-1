@@ -296,16 +296,14 @@ namespace hyperdeal
       if (this->matrix_free.are_ghost_faces_supported())
         {
           this->matrix_free.get_read_writer()
-            .template distribute_local_to_global_face_batched<
-              dim,
-              degree,
-              VectorizedArrayType>(dst.other_values(),
-                                   (Number *)&this->data[0],
-                                   is_ecl ?
-                                     2 * dim * this->macro + this->face_no :
-                                     this->macro,
-                                   this->face_no,
-                                   !is_minus_face + (is_ecl ? 2 : 0));
+            .template process_face<dim, degree>(
+              internal::MatrixFreeFunctions::
+                VectorDistributorLocalToGlobal<Number, VectorizedArrayType>(),
+              dst.other_values(),
+              &this->data[0],
+              is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
+              this->face_no,
+              !is_minus_face + (is_ecl ? 2 : 0));
         }
       else
         {
