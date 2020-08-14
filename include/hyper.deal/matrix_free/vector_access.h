@@ -21,7 +21,6 @@
 #include <hyper.deal/matrix_free/dof_info.h>
 #include <hyper.deal/matrix_free/face_info.h>
 #include <hyper.deal/matrix_free/shape_info.h>
-#include <hyper.deal/matrix_free/vector_access_kernels.h>
 
 namespace hyperdeal
 {
