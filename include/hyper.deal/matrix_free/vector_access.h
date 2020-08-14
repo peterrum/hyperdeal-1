@@ -30,20 +30,24 @@ namespace hyperdeal
     namespace MatrixFreeFunctions
     {
       /**
-       * Read/write functions translating macro IDs to addresses.
-       *
-       * TODO: move to deal.II or make it similar to VectorReader/VectorWriter.
+       * TODO.
        */
       template <typename Number>
       class ReadWriteOperation
       {
       public:
+        /**
+         * Constructor.
+         */
         ReadWriteOperation(
           const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
           const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info,
           const hyperdeal::internal::MatrixFreeFunctions::ShapeInfo<Number>
             &shape_info);
 
+        /**
+         * TODO.
+         */
         template <int dim,
                   int degree,
                   typename VectorOperation,
@@ -55,6 +59,9 @@ namespace hyperdeal
                      const unsigned int           cell_batch_number) const;
 
 
+        /**
+         * TODO.
+         */
         template <int dim,
                   int degree,
                   typename VectorOperation,
