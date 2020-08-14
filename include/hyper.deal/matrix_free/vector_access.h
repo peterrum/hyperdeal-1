@@ -51,33 +51,6 @@ namespace hyperdeal
 
         template <int dim, int degree, typename VectorizedArrayType>
         void
-        read_dof_values_cell_batched(const std::vector<double *> &data_others,
-                                     Number *                     dst,
-                                     const unsigned int face_batch_number,
-                                     const unsigned int face_no,
-                                     const unsigned int side) const;
-
-
-        template <int dim, int degree, typename VectorizedArrayType>
-        void
-        distribute_local_to_global_cell_batched(
-          std::vector<double *> &data_others,
-          const Number *         src,
-          const unsigned int     cell_batch_number) const;
-
-
-        template <int dim, int degree, typename VectorizedArrayType>
-        void
-        distribute_local_to_global_cell_batched(
-          std::vector<double *> &data_others,
-          const Number *         src,
-          const unsigned int     face_batch_number,
-          const unsigned int     face_no,
-          const unsigned int     side) const;
-
-
-        template <int dim, int degree, typename VectorizedArrayType>
-        void
         set_dof_values_cell_batched(std::vector<double *> &data_others,
                                     const Number *         src,
                                     const unsigned int cell_batch_number) const;
@@ -102,6 +75,7 @@ namespace hyperdeal
           const unsigned int     side) const;
 
 
+      private:
         const std::array<std::vector<unsigned char>, 4>
           &n_vectorization_lanes_filled;
         const std::array<std::vector<std::pair<unsigned int, unsigned int>>, 4>
@@ -165,49 +139,6 @@ namespace hyperdeal
       template <typename Number>
       template <int dim, int degree, typename VectorizedArrayType>
       void
-      VectorReaderWriter<Number>::read_dof_values_cell_batched(
-        const std::vector<double *> &data_others,
-        Number *                     dst,
-        const unsigned int           face_batch_number,
-        const unsigned int /*face_no*/,
-        const unsigned int side) const
-      {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
-        if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
-            face_all[side][face_batch_number])
-          {
-            std::array<Number *, v_len> srcs;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                srcs[v] = data_others[i.first] + i.second;
-              }
-            DA::gatherv(srcs, dst);
-          }
-        else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[side][face_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                DA::template gather<v_len>(data_others[i.first] + i.second,
-                                           dst + v);
-              }
-          }
-      }
-
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
       VectorReaderWriter<Number>::read_dof_values_face_batched(
         const std::vector<double *> &data_others,
         Number *                     dst,
@@ -258,89 +189,6 @@ namespace hyperdeal
                   face_no,
                   dst + v,
                   face_type[side][v_len * face_batch_number + v]);
-              }
-          }
-      }
-
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
-      VectorReaderWriter<Number>::distribute_local_to_global_cell_batched(
-        std::vector<double *> &data_others,
-        const Number *         src,
-        const unsigned int     cell_batch_number) const
-      {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
-        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
-          {
-            std::array<Number *, v_len> dsts;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                dsts[v] = data_others[i.first] + i.second;
-              }
-            DA::template scatterv<true>(dsts, src);
-          }
-        else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[2][cell_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                DA::template scatter<v_len, true>(data_others[i.first] +
-                                                    i.second,
-                                                  src + v);
-              }
-          }
-      }
-
-      template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
-      void
-      VectorReaderWriter<Number>::distribute_local_to_global_cell_batched(
-        std::vector<double *> &data_others,
-        const Number *         src,
-        const unsigned int     face_batch_number,
-        const unsigned int /*face_no*/,
-        const unsigned int side) const
-      {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
-        if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
-            face_all[side][face_batch_number])
-          {
-            std::array<Number *, v_len> dsts;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                dsts[v] = data_others[i.first] + i.second;
-              }
-            DA::template scatterv<true>(dsts, src);
-          }
-        else
-          {
-            for (unsigned int v = 0;
-                 v < n_vectorization_lanes_filled[side][face_batch_number] &&
-                 v < v_len;
-                 v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[side]
-                                            [v_len * face_batch_number + v];
-                DA::template scatter<v_len, true>(data_others[i.first] +
-                                                    i.second,
-                                                  src + v);
               }
           }
       }
