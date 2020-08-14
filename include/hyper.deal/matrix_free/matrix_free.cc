@@ -666,7 +666,8 @@ namespace hyperdeal
 
     reader_writer = std::make_shared<
       internal::MatrixFreeFunctions::ReadWriteOperation<Number>>(dof_info,
-                                                                 face_info);
+                                                                 face_info,
+                                                                 shape_info);
 
     const int dim = dim_x + dim_v;
 

@@ -20,6 +20,7 @@
 
 #include <hyper.deal/matrix_free/dof_info.h>
 #include <hyper.deal/matrix_free/face_info.h>
+#include <hyper.deal/matrix_free/shape_info.h>
 #include <hyper.deal/matrix_free/vector_access_kernels.h>
 
 namespace hyperdeal
@@ -39,7 +40,9 @@ namespace hyperdeal
       public:
         ReadWriteOperation(
           const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
-          const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info);
+          const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info,
+          const hyperdeal::internal::MatrixFreeFunctions::ShapeInfo<Number>
+            &shape_info);
 
         template <int dim,
                   int degree,
@@ -78,6 +81,8 @@ namespace hyperdeal
           &                                     dof_indices_contiguous_ptr;
         const std::array<std::vector<bool>, 4> &face_type;
         const std::array<std::vector<bool>, 4> &face_all;
+
+        const std::vector<std::vector<unsigned int>> &face_to_cell_index_nodal;
       };
 
 
@@ -85,11 +90,14 @@ namespace hyperdeal
       template <typename Number>
       ReadWriteOperation<Number>::ReadWriteOperation(
         const hyperdeal::internal::MatrixFreeFunctions::DoFInfo & dof_info,
-        const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info)
+        const hyperdeal::internal::MatrixFreeFunctions::FaceInfo &face_info,
+        const hyperdeal::internal::MatrixFreeFunctions::ShapeInfo<Number>
+          &shape_info)
         : n_vectorization_lanes_filled(dof_info.n_vectorization_lanes_filled)
         , dof_indices_contiguous_ptr(dof_info.dof_indices_contiguous_ptr)
         , face_type(face_info.face_type)
         , face_all(face_info.face_all)
+        , face_to_cell_index_nodal(shape_info.face_to_cell_index_nodal)
       {}
 
 
@@ -150,10 +158,7 @@ namespace hyperdeal
         const unsigned int           face_no,
         const unsigned int           side) const
       {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
-
+        static const unsigned int v_len = VectorizedArrayType::size();
         static const unsigned int n_dofs_per_face =
           dealii::Utilities::pow<unsigned int>(degree + 1, dim - 1);
 
@@ -181,9 +186,9 @@ namespace hyperdeal
             else
               {
                 // case 2: read from shared memory
-                DA::template gatherv_face_internal<v_len>(srcs,
-                                                          face_no,
-                                                          (Number *)local);
+                for (unsigned int i = 0; i < n_dofs_per_face; ++i)
+                  for (unsigned int v = 0; v < v_len; ++v)
+                    local[i][v] = srcs[v][face_to_cell_index_nodal[face_no][i]];
               }
           }
         else
@@ -201,8 +206,8 @@ namespace hyperdeal
               else
                 {
                   // case 2: read from shared memory
-                  DA::template gather_face_internal<v_len>(
-                    srcs[v], face_no, ((Number *)local) + v);
+                  for (unsigned int i = 0; i < n_dofs_per_face; ++i)
+                    local[i][v] = srcs[v][face_to_cell_index_nodal[face_no][i]];
                 }
             }
       }
