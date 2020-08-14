@@ -144,40 +144,41 @@ namespace hyperdeal
       template <int dim, int degree, typename VectorizedArrayType>
       void
       ReadWriteOperation<Number>::set_dof_values_cell_batched(
-        std::vector<double *> &    data_others,
-        const VectorizedArrayType *src,
+        std::vector<double *> &    global,
+        const VectorizedArrayType *local,
         const unsigned int         cell_batch_number) const
       {
-        using DA =
-          VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
-        static const int v_len = VectorizedArrayType::size();
+        static const unsigned int v_len = VectorizedArrayType::size();
+        static const unsigned int n_dofs_per_cell =
+          dealii::Utilities::pow<unsigned int>(degree + 1, dim);
 
-        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
+        // step 1: get pointer to the first dof of the cell in the sm-domain
+        std::array<Number *, v_len> global_ptr;
+        for (unsigned int v = 0;
+             v < n_vectorization_lanes_filled[2][cell_batch_number] &&
+             v < v_len;
+             v++)
           {
-            std::array<Number *, v_len> dsts;
-            for (unsigned int v = 0; v < v_len; v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                dsts[v] = data_others[i.first] + i.second;
-              }
-            dealii::vectorized_transpose_and_store(
-              false, dealii::Utilities::pow(degree + 1, dim), src, dsts);
+            const auto sm_ptr =
+              dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
+            global_ptr[v] = global[sm_ptr.first] + sm_ptr.second;
           }
+
+        // step 2: process dofs
+        if (n_vectorization_lanes_filled[2][cell_batch_number] == v_len)
+          // case 1: all lanes are filled -> use optimized function
+          dealii::vectorized_transpose_and_store(false,
+                                                 n_dofs_per_cell,
+                                                 local,
+                                                 global_ptr);
         else
-          {
+          // case 2: some lanes are empty
+          for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
             for (unsigned int v = 0;
                  v < n_vectorization_lanes_filled[2][cell_batch_number] &&
                  v < v_len;
                  v++)
-              {
-                auto i =
-                  dof_indices_contiguous_ptr[2][v_len * cell_batch_number + v];
-                DA::template scatter<v_len, false>(data_others[i.first] +
-                                                     i.second,
-                                                   ((Number *)src) + v);
-              }
-          }
+              global_ptr[v][i] = local[i][v];
       }
 
 
