@@ -154,6 +154,9 @@ namespace hyperdeal
           VectorReaderWriterKernels<dim, degree, Number, VectorizedArrayType>;
         static const int v_len = VectorizedArrayType::size();
 
+        static const unsigned int n_dofs_per_face =
+          dealii::Utilities::pow<unsigned int>(degree + 1, dim - 1);
+
         std::array<Number *, v_len> srcs;
         for (unsigned int v = 0;
              v < n_vectorization_lanes_filled[side][face_batch_number] &&
@@ -167,18 +170,41 @@ namespace hyperdeal
 
         if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
             face_all[side][face_batch_number])
-          DA::template gatherv_face<v_len>(
-            srcs, face_no, local, face_type[side][v_len * face_batch_number]);
+          {
+            if (face_type[side][v_len * face_batch_number])
+              {
+                // case 1: read from buffers
+                memcpy_strided_v_gather<v_len, Number, false>(local,
+                                                              srcs,
+                                                              n_dofs_per_face);
+              }
+            else
+              {
+                // case 2: read from shared memory
+                DA::template gatherv_face_internal<v_len>(srcs, face_no, local);
+              }
+          }
         else
           for (unsigned int v = 0;
                v < n_vectorization_lanes_filled[side][face_batch_number] &&
                v < v_len;
                v++)
-            DA::template gather_face<v_len>(
-              srcs[v],
-              face_no,
-              local + v,
-              face_type[side][v_len * face_batch_number + v]);
+            {
+              if (face_type[side][v_len * face_batch_number + v])
+                {
+                  // case 1: read from buffers
+                  memcpy_strided<v_len, 1, Number, false>(local + v,
+                                                          srcs[v],
+                                                          n_dofs_per_face);
+                }
+              else
+                {
+                  // case 2: read from shared memory
+                  DA::template gather_face_internal<v_len>(srcs[v],
+                                                           face_no,
+                                                           local + v);
+                }
+            }
       }
 
 
