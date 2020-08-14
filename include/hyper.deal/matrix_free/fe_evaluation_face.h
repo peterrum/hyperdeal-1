@@ -240,9 +240,9 @@ namespace hyperdeal
       if (this->matrix_free.are_ghost_faces_supported())
         {
           this->matrix_free.get_read_writer()
-            .template read_dof_values_face_batched<dim,
-                                                   degree,
-                                                   VectorizedArrayType>(
+            .template process_face<dim, degree>(
+              internal::MatrixFreeFunctions::
+                VectorReader<Number, VectorizedArrayType>(),
               src.other_values(),
               data,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,

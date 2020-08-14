@@ -55,13 +55,17 @@ namespace hyperdeal
                      const unsigned int           cell_batch_number) const;
 
 
-        template <int dim, int degree, typename VectorizedArrayType>
+        template <int dim,
+                  int degree,
+                  typename VectorOperation,
+                  typename VectorizedArrayType>
         void
-        read_dof_values_face_batched(const std::vector<double *> &data_others,
-                                     VectorizedArrayType *        dst,
-                                     const unsigned int face_batch_number,
-                                     const unsigned int face_no,
-                                     const unsigned int side) const;
+        process_face(const VectorOperation &      operation,
+                     const std::vector<double *> &data_others,
+                     VectorizedArrayType *        dst,
+                     const unsigned int           face_batch_number,
+                     const unsigned int           face_no,
+                     const unsigned int           side) const;
 
 
         template <int dim, int degree, typename VectorizedArrayType>
@@ -149,9 +153,13 @@ namespace hyperdeal
 
 
       template <typename Number>
-      template <int dim, int degree, typename VectorizedArrayType>
+      template <int dim,
+                int degree,
+                typename VectorOperation,
+                typename VectorizedArrayType>
       void
-      ReadWriteOperation<Number>::read_dof_values_face_batched(
+      ReadWriteOperation<Number>::process_face(
+        const VectorOperation &      operation,
         const std::vector<double *> &global,
         VectorizedArrayType *        local,
         const unsigned int           face_batch_number,
@@ -181,14 +189,16 @@ namespace hyperdeal
                 // case 1: read from buffers
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                   for (unsigned int v = 0; v < v_len; ++v)
-                    local[i][v] = srcs[v][i];
+                    operation.process_dof(srcs[v][i], local[i][v]);
               }
             else
               {
                 // case 2: read from shared memory
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                   for (unsigned int v = 0; v < v_len; ++v)
-                    local[i][v] = srcs[v][face_to_cell_index_nodal[face_no][i]];
+                    operation.process_dof(
+                      srcs[v][face_to_cell_index_nodal[face_no][i]],
+                      local[i][v]);
               }
           }
         else
@@ -201,13 +211,15 @@ namespace hyperdeal
                 {
                   // case 1: read from buffers
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                    local[i][v] = srcs[v][i];
+                    operation.process_dof(srcs[v][i], local[i][v]);
                 }
               else
                 {
                   // case 2: read from shared memory
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                    local[i][v] = srcs[v][face_to_cell_index_nodal[face_no][i]];
+                    operation.process_dof(
+                      srcs[v][face_to_cell_index_nodal[face_no][i]],
+                      local[i][v]);
                 }
             }
       }
