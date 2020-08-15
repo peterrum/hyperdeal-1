@@ -553,17 +553,19 @@ namespace hyperdeal
       info.n_cell_batches =
         info_x.compute_n_cell_batches() * info_v.compute_n_cells();
 
-      GlobaleCellIDTranslator t(info_x, info_v, comm_x, comm_v);
+      // helper function to create the global cell id of a tensor-product cell
+      GlobaleCellIDTranslator translator(info_x, info_v, comm_x, comm_v);
 
-      const auto process = [&](unsigned int i_x,
-                               unsigned int i_v,
-                               unsigned int v_v) {
+      // helper function to create the tensor product of cells
+      const auto process = [&](const unsigned int i_x,
+                               const unsigned int i_v,
+                               const unsigned int v_v) {
         unsigned int v_x = 0;
         for (; v_x < info_x.cells_fill[i_x]; v_x++)
           {
             const auto cell_x = info_x.cells[i_x * info_x.max_batch_size + v_x];
             const auto cell_y = info_v.cells[i_v * info_v.max_batch_size + v_v];
-            info.cells.emplace_back(t.translate(cell_x, cell_y));
+            info.cells.emplace_back(translator.translate(cell_x, cell_y));
           }
         for (; v_x < info_x.max_batch_size; v_x++)
           info.cells.emplace_back(-1, -1);
@@ -603,7 +605,7 @@ namespace hyperdeal
                       const auto cell_y =
                         info_v.cells[i_v * info_v.max_batch_size + v_v];
                       info.cells_exterior_ecl.emplace_back(
-                        t.translate(cell_x, cell_y));
+                        translator.translate(cell_x, cell_y));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
                     info.cells_exterior_ecl.emplace_back(-1, -1);
@@ -622,7 +624,7 @@ namespace hyperdeal
                                                 dim_v +
                                               d * info_v.max_batch_size + v_v];
                       info.cells_exterior_ecl.emplace_back(
-                        t.translate(cell_x, cell_y));
+                        translator.translate(cell_x, cell_y));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
                     info.cells_exterior_ecl.emplace_back(-1, -1);
@@ -662,7 +664,7 @@ namespace hyperdeal
                     const auto cell_y =
                       info_v.cells[i_v * info_v.max_batch_size + v_v];
                     info.cells_interior.emplace_back(
-                      t.translate(cell_x, cell_y));
+                      translator.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_interior.emplace_back(-1, -1);
@@ -685,7 +687,7 @@ namespace hyperdeal
                     const auto cell_y =
                       info_v.cells_interior[i_v * info_v.max_batch_size + v_v];
                     info.cells_interior.emplace_back(
-                      t.translate(cell_x, cell_y));
+                      translator.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_interior.emplace_back(-1, -1);
@@ -714,7 +716,7 @@ namespace hyperdeal
                     const auto cell_y =
                       info_v.cells[i_v * info_v.max_batch_size + v_v];
                     info.cells_exterior.emplace_back(
-                      t.translate(cell_x, cell_y));
+                      translator.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_exterior.emplace_back(-1, -1);
@@ -735,7 +737,7 @@ namespace hyperdeal
                     const auto cell_y =
                       info_v.cells_exterior[i_v * info_v.max_batch_size + v_v];
                     info.cells_exterior.emplace_back(
-                      t.translate(cell_x, cell_y));
+                      translator.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_exterior.emplace_back(-1, -1);
