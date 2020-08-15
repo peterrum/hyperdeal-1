@@ -261,7 +261,9 @@ namespace hyperdeal
       info.cells.resize(v_len *
                         (data.n_cell_batches() + data.n_ghost_cell_batches()));
       info.cells_ecl.resize(dealii::GeometryInfo<dim>::faces_per_cell * v_len *
-                            data.n_cell_batches());
+                              data.n_cell_batches(),
+                            {dealii::numbers::invalid_unsigned_int,
+                             dealii::numbers::invalid_unsigned_int});
       info.cells_lid.resize(
         v_len * (data.n_cell_batches() + data.n_ghost_cell_batches()));
       info.cells_interior.resize(
@@ -323,23 +325,6 @@ namespace hyperdeal
 
                     // TODO: face_no
                     // TODO: orientation
-                  }
-            }
-
-          // fill the rest with invalid values (TODO: move to the construction
-          // of the vectors)
-          for (; v < v_len; v++)
-            {
-              if (cell < data.n_cell_batches())
-                for (unsigned int d = 0;
-                     d < dealii::GeometryInfo<dim>::faces_per_cell;
-                     d++)
-                  {
-                    info.cells_ecl[cell * v_len *
-                                     dealii::GeometryInfo<dim>::faces_per_cell +
-                                   v_len * d + v] = {
-                      dealii::numbers::invalid_unsigned_int,
-                      dealii::numbers::invalid_unsigned_int};
                   }
             }
         }
