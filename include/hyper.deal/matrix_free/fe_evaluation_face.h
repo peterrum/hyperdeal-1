@@ -250,7 +250,9 @@ namespace hyperdeal
                 VectorReader<Number, VectorizedArrayType>(),
               src.other_values(),
               data,
-              is_ecl ? this->face_no ^ 1 : this->face_no, // TODO!!!
+              (is_ecl == false || this->is_minus_face) ?
+                this->face_no :
+                this->face_no ^ 1, // TODO!!!
               this->macro,
               is_ecl ? 2 : !is_minus_face,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
