@@ -460,49 +460,73 @@ namespace hyperdeal
     }
 
 
-    class Translator2
+    /**
+     * A class to translate the tensor product of global cell ids to a
+     * single global id. Processes are enumerated lexicographically and cells
+     * are enumerated lexicographically and continuously within a process.
+     */
+    class GlobaleCellIDTranslator
     {
     public:
-      Translator2(const GlobalCellInfo &info_x,
-                  const GlobalCellInfo &info_v,
-                  const MPI_Comm        comm_x,
-                  const MPI_Comm        comm_v)
+      /**
+       * Constructor.
+       */
+      GlobaleCellIDTranslator(const GlobalCellInfo &info_x,
+                              const GlobalCellInfo &info_v,
+                              const MPI_Comm        comm_x,
+                              const MPI_Comm        comm_v)
       {
-        n1.resize(dealii::Utilities::MPI::n_mpi_processes(comm_x) + 1);
-        n2.resize(dealii::Utilities::MPI::n_mpi_processes(comm_v) + 1);
-
+        // determine the first cell of each rank in x-space
         {
-          std::vector<unsigned int> n1_temp(n1.size() - 1);
-          unsigned int              n1_local = info_x.compute_n_cells();
-          MPI_Allgather(
-            &n1_local, 1, MPI_UNSIGNED, &n1_temp[0], 1, MPI_UNSIGNED, comm_x);
-          for (unsigned int i = 0; i < n1.size() - 1; i++)
-            n1[i + 1] = n1[i] + n1_temp[i];
+          // allocate memory
+          n1.resize(dealii::Utilities::MPI::n_mpi_processes(comm_x) + 1);
 
-          std::vector<unsigned int> n2_temp(n2.size() - 1);
-          unsigned int              n2_local = info_v.compute_n_cells();
+          // number of locally owned cells
+          const unsigned int n_local = info_x.compute_n_cells();
+
+          // gather the number of cells of all processes
           MPI_Allgather(
-            &n2_local, 1, MPI_UNSIGNED, &n2_temp[0], 1, MPI_UNSIGNED, comm_v);
+            &n_local, 1, MPI_UNSIGNED, n1.data() + 1, 1, MPI_UNSIGNED, comm_x);
+
+          // perform prefix sum
+          for (unsigned int i = 0; i < n1.size() - 1; i++)
+            n1[i + 1] += n1[i];
+        }
+
+        // the same for v-space
+        {
+          n2.resize(dealii::Utilities::MPI::n_mpi_processes(comm_v) + 1);
+          unsigned int local = info_v.compute_n_cells();
+          MPI_Allgather(
+            &local, 1, MPI_UNSIGNED, n2.data() + 1, 1, MPI_UNSIGNED, comm_v);
           for (unsigned int i = 0; i < n2.size() - 1; i++)
-            n2[i + 1] = n2[i] + n2_temp[i];
+            n2[i + 1] += n2[i];
         }
       }
 
+      /**
+       * Translate the tensor product of global cell IDs to a single global ID.
+       */
       CellInfo
-      translate(unsigned int gid1,
-                unsigned int rank1,
-                unsigned int gid2,
-                unsigned int rank2)
+      translate(const CellInfo &id1, const CellInfo &id2) const
       {
-        AssertThrow(rank1 < n1.size(),
-                    dealii::ExcMessage("Size does not match."));
-        AssertThrow(rank2 < n2.size(),
-                    dealii::ExcMessage("Size does not match."));
-        unsigned int lid1 = gid1 - n1[rank1];
-        unsigned int lid2 = gid2 - n2[rank2];
+        // extract needed information
+        const unsigned int gid1  = id1.gid;
+        const unsigned int rank1 = id1.rank;
+        const unsigned int gid2  = id2.gid;
+        const unsigned int rank2 = id2.rank;
 
-        unsigned int lid = lid1 + lid2 * (n1[rank1 + 1] - n1[rank1]);
+        AssertIndexRange(rank1 + 1, n1.size());
+        AssertIndexRange(rank2 + 1, n2.size());
 
+        // 1) determine local IDs
+        const unsigned int lid1 = gid1 - n1[rank1];
+        const unsigned int lid2 = gid2 - n2[rank2];
+
+        // 2) determine local ID by taking taking tensor product
+        const unsigned int lid = lid1 + lid2 * (n1[rank1 + 1] - n1[rank1]);
+
+        // 3) add offset to local ID to get global ID
         return {lid + n1.back() * n2[rank2] +
                   n1[rank1] * (n2[rank2 + 1] - n2[rank2]),
                 rank1 + ((unsigned int)n1.size() - 1) * rank2};
@@ -529,16 +553,17 @@ namespace hyperdeal
       info.n_cell_batches =
         info_x.compute_n_cell_batches() * info_v.compute_n_cells();
 
-      Translator2 t(info_x, info_v, comm_x, comm_v);
+      GlobaleCellIDTranslator t(info_x, info_v, comm_x, comm_v);
 
-      auto process = [&](unsigned int i_x, unsigned int i_v, unsigned int v_v) {
+      const auto process = [&](unsigned int i_x,
+                               unsigned int i_v,
+                               unsigned int v_v) {
         unsigned int v_x = 0;
         for (; v_x < info_x.cells_fill[i_x]; v_x++)
           {
             const auto cell_x = info_x.cells[i_x * info_x.max_batch_size + v_x];
             const auto cell_y = info_v.cells[i_v * info_v.max_batch_size + v_v];
-            info.cells.emplace_back(
-              t.translate(cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+            info.cells.emplace_back(t.translate(cell_x, cell_y));
           }
         for (; v_x < info_x.max_batch_size; v_x++)
           info.cells.emplace_back(-1, -1);
@@ -577,8 +602,8 @@ namespace hyperdeal
                                               d * info_x.max_batch_size + v_x];
                       const auto cell_y =
                         info_v.cells[i_v * info_v.max_batch_size + v_v];
-                      info.cells_exterior_ecl.emplace_back(t.translate(
-                        cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                      info.cells_exterior_ecl.emplace_back(
+                        t.translate(cell_x, cell_y));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
                     info.cells_exterior_ecl.emplace_back(-1, -1);
@@ -596,8 +621,8 @@ namespace hyperdeal
                           .cells_exterior_ecl[i_v * info_v.max_batch_size * 2 *
                                                 dim_v +
                                               d * info_v.max_batch_size + v_v];
-                      info.cells_exterior_ecl.emplace_back(t.translate(
-                        cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                      info.cells_exterior_ecl.emplace_back(
+                        t.translate(cell_x, cell_y));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
                     info.cells_exterior_ecl.emplace_back(-1, -1);
@@ -636,8 +661,8 @@ namespace hyperdeal
                       info_x.cells_interior[i_x * info_x.max_batch_size + v_x];
                     const auto cell_y =
                       info_v.cells[i_v * info_v.max_batch_size + v_v];
-                    info.cells_interior.emplace_back(t.translate(
-                      cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                    info.cells_interior.emplace_back(
+                      t.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_interior.emplace_back(-1, -1);
@@ -659,8 +684,8 @@ namespace hyperdeal
                       info_x.cells[i_x * info_x.max_batch_size + v_x];
                     const auto cell_y =
                       info_v.cells_interior[i_v * info_v.max_batch_size + v_v];
-                    info.cells_interior.emplace_back(t.translate(
-                      cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                    info.cells_interior.emplace_back(
+                      t.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_interior.emplace_back(-1, -1);
@@ -688,8 +713,8 @@ namespace hyperdeal
                       info_x.cells_exterior[i_x * info_x.max_batch_size + v_x];
                     const auto cell_y =
                       info_v.cells[i_v * info_v.max_batch_size + v_v];
-                    info.cells_exterior.emplace_back(t.translate(
-                      cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                    info.cells_exterior.emplace_back(
+                      t.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_exterior.emplace_back(-1, -1);
@@ -709,8 +734,8 @@ namespace hyperdeal
                       info_x.cells[i_x * info_x.max_batch_size + v_x];
                     const auto cell_y =
                       info_v.cells_exterior[i_v * info_v.max_batch_size + v_v];
-                    info.cells_exterior.emplace_back(t.translate(
-                      cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
+                    info.cells_exterior.emplace_back(
+                      t.translate(cell_x, cell_y));
                   }
                 for (; v_x < info_x.max_batch_size; v_x++)
                   info.cells_exterior.emplace_back(-1, -1);
