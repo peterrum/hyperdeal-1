@@ -924,7 +924,7 @@ namespace hyperdeal
       auto &dof_indices_contiguous = dof_info.dof_indices_contiguous;
       auto &no_faces               = face_info.no_faces;
 
-      // 3) collect gids according to vectorization
+      // 3) collect gids (dof_indices) according to vectorization
       {
         for (unsigned int i = 0; i < info.interior_face_no.size(); i++)
           for (unsigned int v = 0; v < info.max_batch_size; v++)
@@ -1057,7 +1057,7 @@ namespace hyperdeal
             {
               bool temp = true;
               for (unsigned int k = 0; k < vectorization_length[i][j]; k++)
-                temp &= face_type[i][j * v_len] && face_type[i][j * v_len + k];
+                temp &= face_type[i][j * v_len] == face_type[i][j * v_len + k];
               face_all[i][j] = temp;
             }
 
