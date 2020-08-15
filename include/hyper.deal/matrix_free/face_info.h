@@ -18,9 +18,9 @@ namespace hyperdeal
         /**
          * Caches the face number of a macro face.
          *
-         * @note (0) FCL (interior); (1) FCL (exterior)
+         * @note (0) FCL (interior); (1) FCL (exterior); (2) TODO; (3) TODO
          */
-        std::array<std::vector<unsigned int>, 2> no_faces;
+        std::array<std::vector<unsigned int>, 4> no_faces;
 
         /**
          * Caches if all faces have the same type when vectorizing.

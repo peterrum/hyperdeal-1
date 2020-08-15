@@ -976,6 +976,7 @@ namespace hyperdeal
       {
         no_faces[0] = info.interior_face_no;
         no_faces[1] = info.exterior_face_no;
+        no_faces[3] = info.exterior_face_no_ecl;
       }
     }
 
@@ -1028,11 +1029,8 @@ namespace hyperdeal
 
                 const auto ptr1 = maps_ghost.find(
                   {gid_this,
-                   do_ghost_faces ?
-                     (i == 3 ?
-                        (j % (dim * 2)) ^ 1 /*TODO: only for structural mesh*/ :
-                        no_faces[i][j]) :
-                     dealii::numbers::invalid_unsigned_int});
+                   do_ghost_faces ? no_faces[i][i == 3 ? l : j] :
+                                    dealii::numbers::invalid_unsigned_int});
 
                 if (ptr1 != maps_ghost.end())
                   {
