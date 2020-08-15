@@ -989,40 +989,43 @@ namespace hyperdeal
       const auto &maps       = partitioner->get_maps();
       const auto &maps_ghost = partitioner->get_maps_ghost();
 
+      static const int v_len = VectorizedArrayType::size();
+
       // to be computed
       auto &cell_ptrs = dof_info.dof_indices_contiguous_ptr;
       auto &face_type = face_info.face_type;
       auto &face_all  = face_info.face_all;
 
+      // allocate memory
       for (unsigned int i = 0; i < 4; i++)
         cell_ptrs[i].resize(dof_indices_contiguous[i].size());
 
       for (unsigned int i = 0; i < 4; i++)
-        if (i != 2)
-          face_type[i].resize(dof_indices_contiguous[i].size());
+        face_type[i].resize(i == 2 ? 0 : dof_indices_contiguous[i].size());
 
       for (unsigned int i = 0; i < 4; i++)
-        if (i != 2)
-          face_all[i].resize(vectorization_length[i].size());
+        face_all[i].resize(i == 2 ? 0 : vectorization_length[i].size());
 
-      static const int v_len = VectorizedArrayType::size();
-
+      // process faces: cell_ptrs and face_type
       for (unsigned int i = 0; i < 4; i++)
-        if (i != 2)
+        {
+          if (i == 2)
+            continue; // nothing to do for cells - it is done later
+
           for (unsigned int j = 0; j < vectorization_length[i].size(); j++)
-            for (unsigned int k = 0; k < vectorization_length[i][j]; k++)
+            for (unsigned int v = 0; v < vectorization_length[i][j]; v++)
               {
-                unsigned int l = j * v_len + k;
+                const unsigned int l = j * v_len + v;
                 Assert(l < dof_indices_contiguous[i].size(),
                        dealii::StandardExceptions::ExcMessage(
                          "Size of gid does not match."));
-                unsigned int gid_this = dof_indices_contiguous[i][l];
+                const unsigned int gid_this = dof_indices_contiguous[i][l];
 
                 Assert(gid_this != dealii::numbers::invalid_unsigned_int,
                        dealii::StandardExceptions::ExcMessage(
                          "Boundaries are not supported yet."));
 
-                auto ptr1 = maps_ghost.find(
+                const auto ptr1 = maps_ghost.find(
                   {gid_this,
                    do_ghost_faces ?
                      (i == 3 ?
@@ -1033,16 +1036,16 @@ namespace hyperdeal
                 if (ptr1 != maps_ghost.end())
                   {
                     cell_ptrs[i][l] = {ptr1->second.first, ptr1->second.second};
-                    face_type[i][l] = true;
+                    face_type[i][l] = true; // ghost face
                     continue;
                   }
 
-                auto ptr2 = maps.find(gid_this);
+                const auto ptr2 = maps.find(gid_this);
 
                 if (ptr2 != maps.end())
                   {
                     cell_ptrs[i][l] = {ptr2->second.first, ptr2->second.second};
-                    face_type[i][l] = false;
+                    face_type[i][l] = false; // cell is part of sm
                     continue;
                   }
 
@@ -1050,17 +1053,25 @@ namespace hyperdeal
                             dealii::StandardExceptions::ExcMessage(
                               "Cell not found!"));
               }
+        }
 
+      // process faces: face_all
       for (unsigned int i = 0; i < 4; i++)
-        if (i != 2)
+        {
+          if (i == 2)
+            continue; // nothing to do for cells - it is done later
+
           for (unsigned int j = 0; j < vectorization_length[i].size(); j++)
             {
               bool temp = true;
-              for (unsigned int k = 0; k < vectorization_length[i][j]; k++)
-                temp &= face_type[i][j * v_len] == face_type[i][j * v_len + k];
+              for (unsigned int v = 0; v < vectorization_length[i][j]; v++)
+                temp &=
+                  (face_type[i][j * v_len] == face_type[i][j * v_len + v]);
               face_all[i][j] = temp;
             }
+        }
 
+      // process cells
       for (unsigned int i = 2; i < 3; i++)
         for (unsigned int j = 0; j < vectorization_length[i].size(); j++)
           for (unsigned int k = 0; k < vectorization_length[i][j]; k++)
