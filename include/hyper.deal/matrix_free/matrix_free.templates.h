@@ -923,6 +923,7 @@ namespace hyperdeal
         dof_info.n_vectorization_lanes_filled;
       auto &dof_indices_contiguous = dof_info.dof_indices_contiguous;
       auto &no_faces               = face_info.no_faces;
+      auto &face_orientations      = face_info.face_orientations;
 
       // 1) collect gids (dof_indices) according to vectorization
       {
@@ -972,11 +973,17 @@ namespace hyperdeal
               n_vectorization_lanes_filled[3].push_back(info.cells_fill[i]);
       }
 
-      // 3) collect face orientations
+      // 3) collect face numbers
       {
         no_faces[0] = info.interior_face_no;
         no_faces[1] = info.exterior_face_no;
         no_faces[3] = info.exterior_face_no_ecl;
+      }
+
+      // 3) collect face orientations
+      {
+        face_orientations[0] = info.face_orientation;
+        face_orientations[3] = info.face_orientation_ecl;
       }
     }
 
@@ -987,6 +994,7 @@ namespace hyperdeal
       const auto &vectorization_length = dof_info.n_vectorization_lanes_filled;
       const auto &dof_indices_contiguous = dof_info.dof_indices_contiguous;
       const auto &no_faces               = face_info.no_faces;
+      const auto &face_orientations      = face_info.face_orientations;
 
       const auto &maps       = partitioner->get_maps();
       const auto &maps_ghost = partitioner->get_maps_ghost();
@@ -1065,7 +1073,12 @@ namespace hyperdeal
               bool temp = true;
               for (unsigned int v = 0; v < vectorization_length[i][j]; v++)
                 temp &=
-                  (face_type[i][j * v_len] == face_type[i][j * v_len + v]);
+                  (face_type[i][j * v_len] == face_type[i][j * v_len + v]) &&
+                  (i == 3 ?
+                     ((no_faces[i][j * v_len] == no_faces[i][j * v_len + v]) &&
+                      (face_orientations[i][j * v_len] ==
+                       face_orientations[i][j * v_len + v])) :
+                     true);
               face_all[i][j] = temp;
             }
         }
