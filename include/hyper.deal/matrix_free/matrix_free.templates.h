@@ -759,14 +759,11 @@ namespace hyperdeal
     AssertDimension(matrix_free_x.get_shape_info().data.front().fe_degree,
                     matrix_free_v.get_shape_info().data.front().fe_degree);
 
-    this->shape_info.template reinit<dim_x + dim_v>(
-      matrix_free_x.get_shape_info().data.front().fe_degree);
-
-    partitioner =
-      std::make_shared<internal::MatrixFreeFunctions::Partitioner<Number>>(
-        shape_info);
-
     const int dim = dim_x + dim_v;
+
+    // set up shape_info
+    this->shape_info.template reinit<dim>(
+      matrix_free_x.get_shape_info().data.front().fe_degree);
 
     // collect (global) information of each macro cell in phase space
     const auto info = [&]() {
@@ -791,8 +788,15 @@ namespace hyperdeal
       return info;
     }();
 
+    // set up partitioner
+    this->partitioner = [&] {
+      AssertThrow(do_ghost_faces,
+                  dealii::StandardExceptions::ExcNotImplemented());
 
-    {
+      auto partitioner =
+        std::make_shared<internal::MatrixFreeFunctions::Partitioner<Number>>(
+          shape_info);
+
       // create a list of inner cells and ghost faces
       std::vector<dealii::types::global_dof_index> local_list;
       std::vector<
@@ -844,19 +848,11 @@ namespace hyperdeal
           }
       }
 
-      // setup partitioner
-      if (do_ghost_faces)
-        {
-          // ghost faces only
-          this->partitioner->reinit(
-            local_list, ghost_list, comm, comm_sm, do_buffering);
-        }
-      else
-        {
-          // ghost cells only
-          AssertThrow(false, dealii::StandardExceptions::ExcNotImplemented());
-        }
-    }
+      // actually setup partitioner
+      partitioner->reinit(local_list, ghost_list, comm, comm_sm, do_buffering);
+
+      return partitioner;
+    }();
 
 
     // set up rest of dof_info and face_info (1)
