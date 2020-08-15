@@ -235,24 +235,23 @@ namespace hyperdeal
       //
       // TODO: replace by global_active_cell_index once
       // https://github.com/dealii/dealii/pull/10490 is merged
-      dealii::FE_DGQ<dim> fe_1(0);
+      dealii::FE_DGQ<dim> fe(0);
       // ... distribute degrees of freedoms
-      dealii::DoFHandler<dim> dof_handler_1(
+      dealii::DoFHandler<dim> dof_handler(
         data.get_dof_handler().get_triangulation());
-      dof_handler_1.distribute_dofs(fe_1);
+      dof_handler.distribute_dofs(fe);
 
-      const auto cell_to_gid =
-        [&](const typename dealii::DoFHandler<dim, dim>::cell_iterator &cell) {
-          dealii::DoFAccessor<dim, dim, dim, true> a(
-            &data.get_dof_handler().get_triangulation(),
-            cell->level(),
-            cell->index(),
-            &dof_handler_1);
+      const auto cell_to_gid = [&](const auto &cell) {
+        typename dealii::DoFHandler<dim>::level_cell_accessor dof_cell(
+          &data.get_dof_handler().get_triangulation(),
+          cell->level(),
+          cell->index(),
+          &dof_handler);
 
-          std::vector<dealii::types::global_dof_index> indices(1);
-          a.get_dof_indices(indices);
-          return CellInfo(indices[0], a.subdomain_id());
-        };
+        std::vector<dealii::types::global_dof_index> indices(1);
+        dof_cell.get_dof_indices(indices);
+        return CellInfo(indices[0], dof_cell.subdomain_id());
+      };
 
       // 2) allocate memory
       const unsigned int v_len = VectorizedArrayType::size();
@@ -384,17 +383,16 @@ namespace hyperdeal
                           const bool fo_interior_face =
                             faces.face_orientation >= 8;
 
-                          unsigned int face_orientation =
+                          const unsigned int face_orientation =
                             faces.face_orientation % 8;
 
                           static const std::array<unsigned int, 8> table{
                             {0, 1, 0, 3, 6, 5, 4, 7}};
 
-                          // invert face orientation
-                          if (is_interior_face != fo_interior_face)
-                            face_orientation = table[face_orientation];
-
-                          info.face_orientation_ecl[n_index] = face_orientation;
+                          info.face_orientation_ecl[n_index] =
+                            (is_interior_face != fo_interior_face) ?
+                              table[face_orientation] :
+                              face_orientation;
                         }
                       else
                         info.face_orientation_ecl[n_index] = -1;
