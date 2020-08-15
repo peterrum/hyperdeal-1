@@ -321,6 +321,6 @@ namespace hyperdeal
 
 } // namespace hyperdeal
 
-#include <hyper.deal/matrix_free/matrix_free.cc>
+#include <hyper.deal/matrix_free/matrix_free.templates.h>
 
 #endif
