@@ -226,34 +226,38 @@ namespace hyperdeal
       const dealii::MatrixFree<dim, Number, VectorizedArrayType> &data,
       GlobalCellInfo &                                            info)
     {
-      const dealii::Triangulation<dim> &triangulation =
-        data.get_dof_handler().get_triangulation();
-
+      // 1) create function to be able translate local cell ids to global ones
+      // and get the rank of the owning process
+      //
+      // TODO: replace by global_active_cell_index once
+      // https://github.com/dealii/dealii/pull/10490 is merged
       dealii::FE_DGQ<dim> fe_1(0);
       // ... distribute degrees of freedoms
-      dealii::DoFHandler<dim> dof_handler_1(triangulation);
+      dealii::DoFHandler<dim> dof_handler_1(
+        data.get_dof_handler().get_triangulation());
       dof_handler_1.distribute_dofs(fe_1);
-
-
 
       const auto cell_to_gid =
         [&](const typename dealii::DoFHandler<dim, dim>::cell_iterator &cell) {
-          dealii::DoFAccessor<dim, dim, dim, true> a(&triangulation,
-                                                     cell->level(),
-                                                     cell->index(),
-                                                     &dof_handler_1);
+          dealii::DoFAccessor<dim, dim, dim, true> a(
+            &data.get_dof_handler().get_triangulation(),
+            cell->level(),
+            cell->index(),
+            &dof_handler_1);
 
           std::vector<dealii::types::global_dof_index> indices(1);
           a.get_dof_indices(indices);
           return CellInfo(indices[0], a.subdomain_id());
         };
 
+      // 2) allocate memory
       const unsigned int v_len = VectorizedArrayType::size();
 
+      // ... general info
       info.max_batch_size = v_len;
       info.n_cell_batches = data.n_cell_batches();
 
-      // cells
+      // ... cells
       info.cells.resize(v_len *
                         (data.n_cell_batches() + data.n_ghost_cell_batches()));
       info.cells_ecl.resize(dealii::GeometryInfo<dim>::faces_per_cell * v_len *
@@ -264,51 +268,66 @@ namespace hyperdeal
         v_len * (data.n_inner_face_batches() + data.n_boundary_face_batches()));
       info.cells_exterior.resize(v_len * data.n_inner_face_batches());
 
-
-      // fill
+      // ... fill
       info.cells_fill.resize(data.n_cell_batches() +
                              data.n_ghost_cell_batches());
       info.faces_fill.resize(data.n_inner_face_batches() +
                              data.n_boundary_face_batches());
 
-      // face_no
+      // ... face_no
       info.interior_face_no.resize(data.n_inner_face_batches() +
                                    data.n_boundary_face_batches());
       info.exterior_face_no.resize(data.n_inner_face_batches());
 
-      // local cells
+      // 3) collect info by looping over local cells and ...
       for (unsigned int cell = 0;
            cell < data.n_cell_batches() + data.n_ghost_cell_batches();
            cell++)
         {
           info.cells_fill[cell] = data.n_components_filled(cell);
 
+          // loop over all cells in macro cells and fill data structures
           unsigned int v = 0;
           for (; v < data.n_components_filled(cell); v++)
             {
-              auto c_it = data.get_cell_iterator(cell, v);
+              const auto c_it = data.get_cell_iterator(cell, v);
 
+              // global id
               info.cells[cell * v_len + v] = cell_to_gid(c_it);
+
+              // local id -> for data access
+              //
+              // warning: we assume that ghost cells have the same number
+              // of unknowns as interior cells
               info.cells_lid[cell * v_len + v] =
                 data.get_dof_info(/*TODO*/)
                   .dof_indices_contiguous[2][cell * v_len + v] /
                 data.get_dofs_per_cell();
 
+              // for interior cells ...
               if (cell < data.n_cell_batches())
+                // ... loop over all its faces
                 for (unsigned int d = 0;
                      d < dealii::GeometryInfo<dim>::faces_per_cell;
                      d++)
                   {
-                    AssertThrow(c_it->has_periodic_neighbor(d) ||
-                                  !c_it->at_boundary(d),
-                                dealii::ExcMessage(
-                                  "Boundaries are not supported yet.")) info
-                      .cells_ecl[cell * v_len *
-                                   dealii::GeometryInfo<dim>::faces_per_cell +
-                                 v_len * d + v] =
+                    AssertThrow(
+                      c_it->has_periodic_neighbor(d) || !c_it->at_boundary(d),
+                      dealii::ExcMessage("Boundaries are not supported yet."));
+
+                    // .. and collect the neighbors for ECL
+                    info.cells_ecl[cell * v_len *
+                                     dealii::GeometryInfo<dim>::faces_per_cell +
+                                   v_len * d + v] =
                       cell_to_gid(c_it->neighbor_or_periodic_neighbor(d));
+
+                    // TODO: face_no
+                    // TODO: orientation
                   }
             }
+
+          // fill the rest with invalid values (TODO: move to the construction
+          // of the vectors)
           for (; v < v_len; v++)
             {
               if (cell < data.n_cell_batches())
@@ -325,36 +344,51 @@ namespace hyperdeal
             }
         }
 
-      // interior faces
+      // ... interior faces (filled lanes, face_no_m/_p, gid_m/_p)
       for (unsigned int face = 0;
            face < data.n_inner_face_batches() + data.n_boundary_face_batches();
-           face++)
+           ++face)
         {
           info.faces_fill[face] = data.n_active_entries_per_face_batch(face);
+
           info.interior_face_no[face] =
             data.get_face_info(face).interior_face_no;
+          info.exterior_face_no[face] =
+            data.get_face_info(face).exterior_face_no;
+
+          // TODO: face_orientation
+
           for (unsigned int v = 0;
                v < data.n_active_entries_per_face_batch(face);
-               v++)
+               ++v)
             {
-              const auto cell = data.get_face_info(face).cells_interior[v];
-              info.cells_interior[face * v_len + v] =
-                cell_to_gid(data.get_cell_iterator(cell / v_len, cell % v_len));
+              const auto cell_m = data.get_face_info(face).cells_interior[v];
+              info.cells_interior[face * v_len + v] = cell_to_gid(
+                data.get_cell_iterator(cell_m / v_len, cell_m % v_len));
+
+              const auto cell_p = data.get_face_info(face).cells_exterior[v];
+              info.cells_exterior[face * v_len + v] = cell_to_gid(
+                data.get_cell_iterator(cell_p / v_len, cell_p % v_len));
             }
         }
 
-      // exterior faces
-      for (unsigned int face = 0; face < data.n_inner_face_batches(); face++)
+      // ... boundary faces (filled lanes, face_no_m, gid_m)
+      for (unsigned int face = data.n_inner_face_batches();
+           face < data.n_inner_face_batches() + data.n_boundary_face_batches();
+           ++face)
         {
-          info.exterior_face_no[face] =
-            data.get_face_info(face).exterior_face_no;
+          info.faces_fill[face] = data.n_active_entries_per_face_batch(face);
+
+          info.interior_face_no[face] =
+            data.get_face_info(face).interior_face_no;
+
           for (unsigned int v = 0;
                v < data.n_active_entries_per_face_batch(face);
-               v++)
+               ++v)
             {
-              const auto cell = data.get_face_info(face).cells_exterior[v];
-              info.cells_exterior[face * v_len + v] =
-                cell_to_gid(data.get_cell_iterator(cell / v_len, cell % v_len));
+              const auto cell_m = data.get_face_info(face).cells_interior[v];
+              info.cells_interior[face * v_len + v] = cell_to_gid(
+                data.get_cell_iterator(cell_m / v_len, cell_m % v_len));
             }
         }
     }
