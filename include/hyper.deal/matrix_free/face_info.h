@@ -54,8 +54,10 @@ namespace hyperdeal
         memory_consumption() const
         {
           return dealii::MemoryConsumption::memory_consumption(no_faces) +
-                 dealii::MemoryConsumption::memory_consumption(face_all) +
-                 dealii::MemoryConsumption::memory_consumption(face_type);
+                 dealii::MemoryConsumption::memory_consumption(
+                   face_orientations) +
+                 dealii::MemoryConsumption::memory_consumption(face_type) +
+                 dealii::MemoryConsumption::memory_consumption(face_all);
         }
       };
     } // namespace MatrixFreeFunctions
