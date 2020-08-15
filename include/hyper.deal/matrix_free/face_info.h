@@ -23,14 +23,6 @@ namespace hyperdeal
         std::array<std::vector<unsigned int>, 4> no_faces;
 
         /**
-         * Caches if all faces have the same type when vectorizing.
-         *
-         * @note (0) FCL (interior); (1) FCL (exterior);
-         *       (2) empty (TODO - remove); (3) ECL (exterior)
-         */
-        std::array<std::vector<bool>, 4> face_all;
-
-        /**
          * Stores for each face the type.Type
          * means in this context if their dofs are stored in faces or
          * are embedded in a cell. Example: ghost faces vs. faces of
@@ -40,6 +32,14 @@ namespace hyperdeal
          *       (2) empty (TODO - remove); (3) ECL (exterior)
          */
         std::array<std::vector<bool>, 4> face_type;
+
+        /**
+         * Caches if all faces have the same type when vectorizing.
+         *
+         * @note (0) FCL (interior); (1) FCL (exterior);
+         *       (2) empty (TODO - remove); (3) ECL (exterior)
+         */
+        std::array<std::vector<bool>, 4> face_all;
 
 
         std::size_t
