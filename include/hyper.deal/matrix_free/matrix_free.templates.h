@@ -323,29 +323,88 @@ namespace hyperdeal
               // for interior cells ...
               if (cell < data.n_cell_batches())
                 // ... loop over all its faces
-                for (unsigned int d = 0;
-                     d < dealii::GeometryInfo<dim>::faces_per_cell;
-                     d++)
+                for (unsigned int face_no = 0;
+                     face_no < dealii::GeometryInfo<dim>::faces_per_cell;
+                     face_no++)
                   {
-                    AssertThrow(
-                      c_it->has_periodic_neighbor(d) || !c_it->at_boundary(d),
-                      dealii::ExcMessage("Boundaries are not supported yet."));
+                    AssertThrow(c_it->has_periodic_neighbor(face_no) ||
+                                  !c_it->at_boundary(face_no),
+                                dealii::ExcMessage(
+                                  "Boundaries are not supported yet."));
 
                     const unsigned int n_index =
                       cell * v_len * dealii::GeometryInfo<dim>::faces_per_cell +
-                      v_len * d + v;
+                      v_len * face_no + v;
 
                     // .. and collect the neighbors for ECL with the following
                     // information: 1) global id
                     info.cells_ecl[n_index] =
-                      cell_to_gid(c_it->neighbor_or_periodic_neighbor(d));
+                      cell_to_gid(c_it->neighbor_or_periodic_neighbor(face_no));
 
                     // 2) face number
                     info.exterior_face_no_ecl[n_index] =
-                      c_it->at_boundary(d) ? c_it->periodic_neighbor_index(d) :
-                                             c_it->neighbor_index(d);
+                      c_it->at_boundary(face_no) ?
+                        c_it->periodic_neighbor_index(face_no) :
+                        c_it->neighbor_index(face_no);
 
-                    // TODO: orientation
+                    // 2) face number and face orientation
+                    //
+                    // note: this is a modified copy and merged version of the
+                    // methods dealii::FEFaceEvaluation::compute_face_no_data()
+                    // and dealii::FEFaceEvaluation::compute_face_orientations()
+                    // so that we don't have to use here FEEFaceEvaluation
+                    {
+                      const unsigned int cell_this =
+                        cell * VectorizedArrayType::size() + v;
+
+                      const unsigned int face_index =
+                        data.get_cell_and_face_to_plain_faces()(cell,
+                                                                face_no,
+                                                                v);
+
+                      Assert(face_index !=
+                               dealii::numbers::invalid_unsigned_int,
+                             dealii::StandardExceptions::ExcNotInitialized());
+
+                      const auto &faces = data.get_face_info(
+                        face_index / VectorizedArrayType::size());
+
+                      const auto cell_m =
+                        faces.cells_interior[face_index %
+                                             VectorizedArrayType::size()];
+
+                      info.exterior_face_no_ecl[n_index] =
+                        (cell_m == cell_this) ?
+                          data
+                            .get_face_info(face_index /
+                                           VectorizedArrayType::size())
+                            .exterior_face_no :
+                          data
+                            .get_face_info(face_index /
+                                           VectorizedArrayType::size())
+                            .interior_face_no;
+
+                      if (dim == 3)
+                        {
+                          const bool is_interior_face = cell_m != cell_this;
+                          const bool fo_interior_face =
+                            faces.face_orientation >= 8;
+
+                          unsigned int face_orientation =
+                            faces.face_orientation % 8;
+
+                          static const std::array<unsigned int, 8> table{
+                            {0, 1, 0, 3, 6, 5, 4, 7}};
+
+                          // invert face orientation
+                          if (is_interior_face != fo_interior_face)
+                            face_orientation = table[face_orientation];
+
+                          info.face_orientation_ecl[n_index] = face_orientation;
+                        }
+                      else
+                        info.face_orientation_ecl[n_index] = -1;
+                    }
                   }
             }
         }
