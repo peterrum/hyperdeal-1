@@ -1073,21 +1073,15 @@ namespace hyperdeal
         }
 
       // process cells
-      for (unsigned int i = 2; i < 3; i++)
-        for (unsigned int j = 0; j < vectorization_length[i].size(); j++)
-          for (unsigned int k = 0; k < vectorization_length[i][j]; k++)
-            {
-              unsigned int l = j * v_len + k;
+      for (unsigned int j = 0; j < vectorization_length[2].size(); j++)
+        for (unsigned int v = 0; v < vectorization_length[2][j]; v++)
+          {
+            const unsigned int l        = j * v_len + v;
+            const unsigned int gid_this = dof_indices_contiguous[2][l];
+            const auto         ptr      = maps.find(gid_this);
 
-              unsigned int gid_this = dof_indices_contiguous[i][l];
-              auto         ptr      = maps.find(gid_this);
-
-              // TODO: why?
-              if (ptr == maps.end())
-                continue;
-
-              cell_ptrs[i][l] = {ptr->second.first, ptr->second.second};
-            }
+            cell_ptrs[2][l] = {ptr->second.first, ptr->second.second};
+          }
 
       // clear vector since it is not needed anymore, since the values
       // are the same as for cells
