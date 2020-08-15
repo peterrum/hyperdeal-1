@@ -84,6 +84,10 @@ namespace hyperdeal
 
       std::vector<unsigned int> interior_face_no;
       std::vector<unsigned int> exterior_face_no;
+      std::vector<unsigned int> exterior_face_no_ecl; // new
+
+      std::vector<unsigned int> face_orientation;     // new
+      std::vector<unsigned int> face_orientation_ecl; // new
 
       unsigned int
       compute_n_cell_batches() const
@@ -280,6 +284,16 @@ namespace hyperdeal
       info.interior_face_no.resize(data.n_inner_face_batches() +
                                    data.n_boundary_face_batches());
       info.exterior_face_no.resize(data.n_inner_face_batches());
+      info.exterior_face_no_ecl.resize(
+        dealii::GeometryInfo<dim>::faces_per_cell * v_len *
+        data.n_cell_batches());
+
+      // ... face_orientation
+      info.face_orientation.resize(data.n_inner_face_batches() +
+                                   data.n_boundary_face_batches());
+      info.face_orientation_ecl.resize(
+        dealii::GeometryInfo<dim>::faces_per_cell * v_len *
+        data.n_cell_batches());
 
       // 3) collect info by looping over local cells and ...
       for (unsigned int cell = 0;
@@ -317,13 +331,20 @@ namespace hyperdeal
                       c_it->has_periodic_neighbor(d) || !c_it->at_boundary(d),
                       dealii::ExcMessage("Boundaries are not supported yet."));
 
-                    // .. and collect the neighbors for ECL
-                    info.cells_ecl[cell * v_len *
-                                     dealii::GeometryInfo<dim>::faces_per_cell +
-                                   v_len * d + v] =
+                    const unsigned int n_index =
+                      cell * v_len * dealii::GeometryInfo<dim>::faces_per_cell +
+                      v_len * d + v;
+
+                    // .. and collect the neighbors for ECL with the following
+                    // information: 1) global id
+                    info.cells_ecl[n_index] =
                       cell_to_gid(c_it->neighbor_or_periodic_neighbor(d));
 
-                    // TODO: face_no
+                    // 2) face number
+                    info.exterior_face_no_ecl[n_index] =
+                      c_it->at_boundary(d) ? c_it->periodic_neighbor_index(d) :
+                                             c_it->neighbor_index(d);
+
                     // TODO: orientation
                   }
             }
@@ -334,15 +355,20 @@ namespace hyperdeal
            face < data.n_inner_face_batches() + data.n_boundary_face_batches();
            ++face)
         {
+          // number of filled lanes
           info.faces_fill[face] = data.n_active_entries_per_face_batch(face);
 
+          // face number
           info.interior_face_no[face] =
             data.get_face_info(face).interior_face_no;
           info.exterior_face_no[face] =
             data.get_face_info(face).exterior_face_no;
 
-          // TODO: face_orientation
+          // face orientation
+          info.face_orientation[face] =
+            data.get_face_info(face).face_orientation;
 
+          // process cells in batch
           for (unsigned int v = 0;
                v < data.n_active_entries_per_face_batch(face);
                ++v)
