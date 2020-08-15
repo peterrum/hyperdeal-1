@@ -924,7 +924,7 @@ namespace hyperdeal
       auto &dof_indices_contiguous = dof_info.dof_indices_contiguous;
       auto &no_faces               = face_info.no_faces;
 
-      // 3) collect gids (dof_indices) according to vectorization
+      // 1) collect gids (dof_indices) according to vectorization
       {
         for (unsigned int i = 0; i < info.interior_face_no.size(); i++)
           for (unsigned int v = 0; v < info.max_batch_size; v++)
@@ -952,7 +952,7 @@ namespace hyperdeal
                   .gid);
       }
 
-      // 4) collect filled lanes
+      // 2) collect filled lanes
       {
         for (unsigned int i = 0; i < info.interior_face_no.size(); i++)
           n_vectorization_lanes_filled[0].push_back(info.faces_fill[i]);
@@ -963,7 +963,8 @@ namespace hyperdeal
         for (unsigned int i = 0; i < info.n_cell_batches; i++)
           n_vectorization_lanes_filled[2].push_back(info.cells_fill[i]);
 
-        if (this->use_ecl) // TODO: why the hack are ECL data structures set up?
+        if (this->use_ecl) // filled only so that the code is more generic
+                           // cleared later on!
           for (unsigned int i = 0; i < info.n_cell_batches; i++)
             for (unsigned int d = 0;
                  d < dealii::GeometryInfo<dim>::faces_per_cell;
@@ -971,7 +972,7 @@ namespace hyperdeal
               n_vectorization_lanes_filled[3].push_back(info.cells_fill[i]);
       }
 
-      // 5) collect face orientations
+      // 3) collect face orientations
       {
         no_faces[0] = info.interior_face_no;
         no_faces[1] = info.exterior_face_no;
@@ -1087,6 +1088,10 @@ namespace hyperdeal
 
               cell_ptrs[i][l] = {ptr->second.first, ptr->second.second};
             }
+
+      // clear vector since it is not needed anymore, since the values
+      // are the same as for cells
+      dof_info.n_vectorization_lanes_filled[3].clear();
     }
   }
 

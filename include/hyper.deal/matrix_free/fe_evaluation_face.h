@@ -250,8 +250,10 @@ namespace hyperdeal
                 VectorReader<Number, VectorizedArrayType>(),
               src.other_values(),
               data,
+              is_ecl ? this->face_no ^ 1 : this->face_no, // TODO!!!
+              this->macro,
+              is_ecl ? 2 : !is_minus_face,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
-              is_ecl ? this->face_no ^ 1 : this->face_no,
               !is_minus_face + (is_ecl ? 2 : 0));
         }
       else
@@ -298,6 +300,8 @@ namespace hyperdeal
     distribute_local_to_global(
       dealii::LinearAlgebra::SharedMPI::Vector<Number> &dst) const
     {
+      Assert(is_ecl == false, dealii::StandardExceptions::ExcNotImplemented());
+
       if (this->matrix_free.are_ghost_faces_supported())
         {
           internal::MatrixFreeFunctions::ReadWriteOperation<Number>(
@@ -309,9 +313,11 @@ namespace hyperdeal
                 VectorDistributorLocalToGlobal<Number, VectorizedArrayType>(),
               dst.other_values(),
               &this->data[0],
-              is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
               this->face_no,
-              !is_minus_face + (is_ecl ? 2 : 0));
+              this->macro,
+              !is_minus_face,
+              this->macro,
+              !is_minus_face);
         }
       else
         {

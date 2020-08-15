@@ -69,9 +69,12 @@ namespace hyperdeal
         process_face(const VectorOperation &      operation,
                      const std::vector<double *> &data_others,
                      VectorizedArrayType *        dst,
-                     const unsigned int           face_batch_number,
                      const unsigned int           face_no,
-                     const unsigned int           side) const;
+                     const unsigned int           cell_batch_number, // TODO?
+                     const unsigned int           cell_side,         //
+                     const unsigned int           face_batch_number, //
+                     const unsigned int           face_side          //
+                     ) const;
 
       private:
         const std::array<std::vector<unsigned char>, 4>
@@ -157,9 +160,12 @@ namespace hyperdeal
         const VectorOperation &      operation,
         const std::vector<double *> &global,
         VectorizedArrayType *        local,
-        const unsigned int           face_batch_number,
         const unsigned int           face_no,
-        const unsigned int           side) const
+        const unsigned int           cell_batch_number, // TODO: names?
+        const unsigned int           cell_side,         //
+        const unsigned int           face_batch_number, //
+        const unsigned int           face_side          //
+        ) const
       {
         static const unsigned int v_len = VectorizedArrayType::size();
         static const unsigned int n_dofs_per_face =
@@ -167,19 +173,21 @@ namespace hyperdeal
 
         std::array<Number *, v_len> global_ptr;
         for (unsigned int v = 0;
-             v < n_vectorization_lanes_filled[side][face_batch_number] &&
+             v < n_vectorization_lanes_filled[cell_side][cell_batch_number] &&
              v < v_len;
              v++)
           {
             const auto sm_ptr =
-              dof_indices_contiguous_ptr[side][v_len * face_batch_number + v];
+              dof_indices_contiguous_ptr[face_side]
+                                        [v_len * face_batch_number + v];
             global_ptr[v] = global[sm_ptr.first] + sm_ptr.second;
           }
 
-        if (n_vectorization_lanes_filled[side][face_batch_number] == v_len &&
-            face_all[side][face_batch_number])
+        if (n_vectorization_lanes_filled[cell_side][cell_batch_number] ==
+              v_len &&
+            face_all[face_side][face_batch_number])
           {
-            if (face_type[side][v_len * face_batch_number])
+            if (face_type[face_side][v_len * face_batch_number])
               {
                 // case 1: read from buffers
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
@@ -198,11 +206,11 @@ namespace hyperdeal
           }
         else
           for (unsigned int v = 0;
-               v < n_vectorization_lanes_filled[side][face_batch_number] &&
+               v < n_vectorization_lanes_filled[cell_side][cell_batch_number] &&
                v < v_len;
                v++)
             {
-              if (face_type[side][v_len * face_batch_number + v])
+              if (face_type[face_side][v_len * face_batch_number + v])
                 {
                   // case 1: read from buffers
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
