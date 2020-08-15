@@ -341,12 +341,6 @@ namespace hyperdeal
                     info.cells_ecl[n_index] =
                       cell_to_gid(c_it->neighbor_or_periodic_neighbor(face_no));
 
-                    // 2) face number
-                    info.exterior_face_no_ecl[n_index] =
-                      c_it->at_boundary(face_no) ?
-                        c_it->periodic_neighbor_index(face_no) :
-                        c_it->neighbor_index(face_no);
-
                     // 2) face number and face orientation
                     //
                     // note: this is a modified copy and merged version of the
