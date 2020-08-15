@@ -597,18 +597,25 @@ namespace hyperdeal
                   unsigned int v_x = 0;
                   for (; v_x < info_x.cells_fill[i_x]; v_x++)
                     {
-                      const auto cell_x =
-                        info_x
-                          .cells_exterior_ecl[i_x * info_x.max_batch_size * 2 *
-                                                dim_x +
-                                              d * info_x.max_batch_size + v_x];
+                      const unsigned int index =
+                        i_x * info_x.max_batch_size * 2 * dim_x +
+                        d * info_x.max_batch_size + v_x;
+                      const auto cell_x = info_x.cells_exterior_ecl[index];
                       const auto cell_y =
                         info_v.cells[i_v * info_v.max_batch_size + v_v];
                       info.cells_exterior_ecl.emplace_back(
                         translator.translate(cell_x, cell_y));
+                      info.exterior_face_no_ecl.emplace_back(
+                        info_x.exterior_face_no_ecl[index]); // TODO?
+                      info.face_orientation_ecl.emplace_back(
+                        info_x.face_orientation_ecl[index]); // TODO?
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
-                    info.cells_exterior_ecl.emplace_back(-1, -1);
+                    {
+                      info.cells_exterior_ecl.emplace_back(-1, -1);
+                      info.exterior_face_no_ecl.emplace_back(-1);
+                      info.face_orientation_ecl.emplace_back(-1);
+                    }
                 }
 
               for (int d = 0; d < 2 * dim_v; d++)
@@ -618,16 +625,24 @@ namespace hyperdeal
                     {
                       const auto cell_x =
                         info_x.cells[i_x * info_x.max_batch_size + v_x];
-                      const auto cell_y =
-                        info_v
-                          .cells_exterior_ecl[i_v * info_v.max_batch_size * 2 *
-                                                dim_v +
-                                              d * info_v.max_batch_size + v_v];
+
+                      const unsigned index =
+                        i_v * info_v.max_batch_size * 2 * dim_v +
+                        d * info_v.max_batch_size + v_v;
+                      const auto cell_y = info_v.cells_exterior_ecl[index];
                       info.cells_exterior_ecl.emplace_back(
                         translator.translate(cell_x, cell_y));
+                      info.exterior_face_no_ecl.emplace_back(
+                        info_v.exterior_face_no_ecl[index]); // TODO?
+                      info.face_orientation_ecl.emplace_back(
+                        info_v.face_orientation_ecl[index]); // TODO?
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
-                    info.cells_exterior_ecl.emplace_back(-1, -1);
+                    {
+                      info.cells_exterior_ecl.emplace_back(-1, -1);
+                      info.exterior_face_no_ecl.emplace_back(-1);
+                      info.face_orientation_ecl.emplace_back(-1);
+                    }
                 }
             }
 
