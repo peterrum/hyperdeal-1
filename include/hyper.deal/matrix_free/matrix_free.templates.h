@@ -70,24 +70,27 @@ namespace hyperdeal
 
     struct GlobalCellInfo
     {
+      // general (cached) info
       unsigned int max_batch_size;
       unsigned int n_cell_batches;
 
-      std::vector<CellInfo>     cells_interior;
-      std::vector<CellInfo>     cells_exterior;
-      std::vector<CellInfo>     cells;
-      std::vector<CellInfo>     cells_exterior_ecl;
-      std::vector<unsigned int> cells_lid;
+      // cell information
+      std::vector<unsigned char> cells_fill; // for each macro cell
+      std::vector<CellInfo>      cells;      // for each lane
+      std::vector<unsigned int>  cells_lid;  //
 
-      std::vector<unsigned char> cells_fill;
-      std::vector<unsigned char> faces_fill;
+      // face information in context of FCL
+      std::vector<unsigned char> faces_fill;       // for each macro face
+      std::vector<unsigned int>  interior_face_no; //
+      std::vector<unsigned int>  exterior_face_no; //
+      std::vector<unsigned int>  face_orientation; //
+      std::vector<CellInfo>      cells_interior;   // for each lane
+      std::vector<CellInfo>      cells_exterior;   //
 
-      std::vector<unsigned int> interior_face_no;
-      std::vector<unsigned int> exterior_face_no;
-      std::vector<unsigned int> exterior_face_no_ecl; // new
-
-      std::vector<unsigned int> face_orientation;     // new
-      std::vector<unsigned int> face_orientation_ecl; // new
+      // face information in context of ECL
+      std::vector<CellInfo>     cells_exterior_ecl;   // for each lane
+      std::vector<unsigned int> exterior_face_no_ecl; //
+      std::vector<unsigned int> face_orientation_ecl; //
 
       unsigned int
       compute_n_cell_batches() const
