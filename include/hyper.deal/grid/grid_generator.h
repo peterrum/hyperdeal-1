@@ -244,6 +244,156 @@ namespace hyperdeal
 
     template <int dim_x, int dim_v>
     void
+    subdivided_hyper_ball(
+      std::shared_ptr<dealii::parallel::TriangulationBase<dim_x>> &tria_x,
+      std::shared_ptr<dealii::parallel::TriangulationBase<dim_v>> &tria_v,
+      const unsigned int &        n_refinements_x,
+      const dealii::Point<dim_x> &left_x,
+      const dealii::Point<dim_x> &right_x,
+      const bool                  do_periodic_x,
+      const unsigned int &        n_refinements_v,
+      const dealii::Point<dim_v> &left_v,
+      const dealii::Point<dim_v> &right_v,
+      const bool                  do_periodic_v)
+    {
+      if (auto triangulation_x =
+            dynamic_cast<dealii::parallel::distributed::Triangulation<dim_x> *>(
+              &*tria_x))
+        {
+          if (auto triangulation_v = dynamic_cast<
+                dealii::parallel::distributed::Triangulation<dim_v> *>(
+                &*tria_v))
+            {
+              dealii::GridGenerator::hyper_ball(
+                *triangulation_x,
+                dim_x == 2 ? dealii::Point<dim_x>(0.0, 0.0) :
+                             dealii::Point<dim_x>(0.0, 0.0, 0.0),
+                2.0 * (dim_x == 2 ? std::sqrt(0.5) : std::sqrt(0.75)));
+
+              for (auto &cell : *triangulation_x)
+                cell.set_all_manifold_ids(dealii::numbers::flat_manifold_id);
+              ;
+              dealii::GridGenerator::hyper_ball(
+                *triangulation_v,
+                dim_v == 2 ? dealii::Point<dim_v>(0.0, 0.0) :
+                             dealii::Point<dim_v>(0.0, 0.0, 0.0),
+                2.0 * (dim_v == 2 ? std::sqrt(0.5) : std::sqrt(0.75)));
+
+              for (auto &cell : *triangulation_v)
+                cell.set_all_manifold_ids(dealii::numbers::flat_manifold_id);
+
+              if (do_periodic_x)
+                internal::apply_periodicity(triangulation_x, left_x, right_x);
+              if (do_periodic_v)
+                internal::apply_periodicity(triangulation_v,
+                                            left_v,
+                                            right_v,
+                                            2 * dim_x);
+
+              triangulation_x->refine_global(n_refinements_x);
+              triangulation_v->refine_global(n_refinements_v);
+            }
+          else
+            AssertThrow(false, dealii::ExcMessage("Unknown triangulation!"));
+        }
+      else if (auto triangulation_x = dynamic_cast<
+                 dealii::parallel::fullydistributed::Triangulation<dim_x> *>(
+                 &*tria_x))
+        {
+          if (auto triangulation_v = dynamic_cast<
+                dealii::parallel::fullydistributed::Triangulation<dim_v> *>(
+                &*tria_v))
+            {
+              {
+                auto                         comm = tria_x->get_communicator();
+                dealii::Triangulation<dim_x> tria(
+                  dealii::Triangulation<
+                    dim_x>::limit_level_difference_at_vertices);
+
+                dealii::GridGenerator::hyper_ball(
+                  tria,
+                  dim_x == 2 ? dealii::Point<dim_x>(0.0, 0.0) :
+                               dealii::Point<dim_x>(0.0, 0.0, 0.0),
+                  2.0 * (dim_x == 2 ? std::sqrt(0.5) : std::sqrt(0.75)));
+
+                for (auto &cell : tria)
+                  cell.set_all_manifold_ids(dealii::numbers::flat_manifold_id);
+
+                if (do_periodic_x)
+                  internal::apply_periodicity(&tria, left_x, right_x);
+                tria.refine_global(n_refinements_x);
+                dealii::GridTools::partition_triangulation_zorder(
+                  dealii::Utilities::MPI::n_mpi_processes(comm), tria, false);
+                dealii::GridTools::partition_multigrid_levels(tria);
+
+                const auto construction_data =
+                  dealii::TriangulationDescription::Utilities::
+                    create_description_from_triangulation(
+                      tria,
+                      comm,
+                      dealii::TriangulationDescription::Settings::
+                        construct_multigrid_hierarchy);
+                triangulation_x->create_triangulation(construction_data);
+              }
+              if (do_periodic_x)
+                internal::apply_periodicity(
+                  dynamic_cast<dealii::Triangulation<dim_x> *>(&*tria_x),
+                  left_x,
+                  right_x,
+                  20);
+
+              {
+                auto                         comm = tria_v->get_communicator();
+                dealii::Triangulation<dim_v> tria(
+                  dealii::Triangulation<
+                    dim_v>::limit_level_difference_at_vertices);
+
+                ;
+                dealii::GridGenerator::hyper_ball(
+                  tria,
+                  dim_v == 2 ? dealii::Point<dim_v>(0.0, 0.0) :
+                               dealii::Point<dim_v>(0.0, 0.0, 0.0),
+                  2.0 * (dim_v == 2 ? std::sqrt(0.5) : std::sqrt(0.75)));
+
+                for (auto &cell : tria)
+                  cell.set_all_manifold_ids(dealii::numbers::flat_manifold_id);
+
+                if (do_periodic_v)
+                  internal::apply_periodicity(&tria,
+                                              left_v,
+                                              right_v,
+                                              2 * dim_x);
+                tria.refine_global(n_refinements_v);
+                dealii::GridTools::partition_triangulation_zorder(
+                  dealii::Utilities::MPI::n_mpi_processes(comm), tria, false);
+                dealii::GridTools::partition_multigrid_levels(tria);
+
+                const auto construction_data =
+                  dealii::TriangulationDescription::Utilities::
+                    create_description_from_triangulation(
+                      tria,
+                      comm,
+                      dealii::TriangulationDescription::Settings::
+                        construct_multigrid_hierarchy);
+                triangulation_v->create_triangulation(construction_data);
+              }
+              if (do_periodic_v)
+                internal::apply_periodicity(
+                  dynamic_cast<dealii::Triangulation<dim_v> *>(&*tria_v),
+                  left_v,
+                  right_v,
+                  20 + 2 * dim_x);
+            }
+          else
+            AssertThrow(false, dealii::ExcMessage("Unknown triangulation!"));
+        }
+      else
+        AssertThrow(false, dealii::ExcMessage("Unknown triangulation!"));
+    }
+
+
+    template <int dim_x, int dim_v>
+    void
     hyper_cube(
       std::shared_ptr<dealii::parallel::TriangulationBase<dim_x>> &tria_x,
       std::shared_ptr<dealii::parallel::TriangulationBase<dim_v>> &tria_v,
