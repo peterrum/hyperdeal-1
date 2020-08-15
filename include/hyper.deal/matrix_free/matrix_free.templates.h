@@ -76,7 +76,7 @@ namespace hyperdeal
       std::vector<CellInfo>     cells_interior;
       std::vector<CellInfo>     cells_exterior;
       std::vector<CellInfo>     cells;
-      std::vector<CellInfo>     cells_ecl;
+      std::vector<CellInfo>     cells_exterior_ecl;
       std::vector<unsigned int> cells_lid;
 
       std::vector<unsigned char> cells_fill;
@@ -169,11 +169,12 @@ namespace hyperdeal
                   {
                     Assert(i * info.max_batch_size * 2 * dim +
                                d * info.max_batch_size + v <
-                             info.cells_ecl.size(),
+                             info.cells_exterior_ecl.size(),
                            dealii::ExcMessage("Out of range!"));
                     const auto cell_info =
-                      info.cells_ecl[i * info.max_batch_size * 2 * dim +
-                                     d * info.max_batch_size + v];
+                      info
+                        .cells_exterior_ecl[i * info.max_batch_size * 2 * dim +
+                                            d * info.max_batch_size + v];
                     unsigned int gid = cell_info.gid;
                     if (gid == dealii::numbers::invalid_unsigned_int)
                       continue;
@@ -263,10 +264,10 @@ namespace hyperdeal
       // ... cells
       info.cells.resize(v_len *
                         (data.n_cell_batches() + data.n_ghost_cell_batches()));
-      info.cells_ecl.resize(dealii::GeometryInfo<dim>::faces_per_cell * v_len *
-                              data.n_cell_batches(),
-                            {dealii::numbers::invalid_unsigned_int,
-                             dealii::numbers::invalid_unsigned_int});
+      info.cells_exterior_ecl.resize(dealii::GeometryInfo<dim>::faces_per_cell *
+                                       v_len * data.n_cell_batches(),
+                                     {dealii::numbers::invalid_unsigned_int,
+                                      dealii::numbers::invalid_unsigned_int});
       info.cells_lid.resize(
         v_len * (data.n_cell_batches() + data.n_ghost_cell_batches()));
       info.cells_interior.resize(
@@ -337,7 +338,7 @@ namespace hyperdeal
 
                     // .. and collect the neighbors for ECL with the following
                     // information: 1) global id
-                    info.cells_ecl[n_index] =
+                    info.cells_exterior_ecl[n_index] =
                       cell_to_gid(c_it->neighbor_or_periodic_neighbor(face_no));
 
                     // 2) face number and face orientation
@@ -568,15 +569,16 @@ namespace hyperdeal
                     {
                       const auto cell_x =
                         info_x
-                          .cells_ecl[i_x * info_x.max_batch_size * 2 * dim_x +
-                                     d * info_x.max_batch_size + v_x];
+                          .cells_exterior_ecl[i_x * info_x.max_batch_size * 2 *
+                                                dim_x +
+                                              d * info_x.max_batch_size + v_x];
                       const auto cell_y =
                         info_v.cells[i_v * info_v.max_batch_size + v_v];
-                      info.cells_ecl.emplace_back(t.translate(
+                      info.cells_exterior_ecl.emplace_back(t.translate(
                         cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
-                    info.cells_ecl.emplace_back(-1, -1);
+                    info.cells_exterior_ecl.emplace_back(-1, -1);
                 }
 
               for (int d = 0; d < 2 * dim_v; d++)
@@ -588,13 +590,14 @@ namespace hyperdeal
                         info_x.cells[i_x * info_x.max_batch_size + v_x];
                       const auto cell_y =
                         info_v
-                          .cells_ecl[i_v * info_v.max_batch_size * 2 * dim_v +
-                                     d * info_v.max_batch_size + v_v];
-                      info.cells_ecl.emplace_back(t.translate(
+                          .cells_exterior_ecl[i_v * info_v.max_batch_size * 2 *
+                                                dim_v +
+                                              d * info_v.max_batch_size + v_v];
+                      info.cells_exterior_ecl.emplace_back(t.translate(
                         cell_x.gid, cell_x.rank, cell_y.gid, cell_y.rank));
                     }
                   for (; v_x < info_x.max_batch_size; v_x++)
-                    info.cells_ecl.emplace_back(-1, -1);
+                    info.cells_exterior_ecl.emplace_back(-1, -1);
                 }
             }
 
@@ -881,9 +884,10 @@ namespace hyperdeal
             for (unsigned int v = 0; v < info.max_batch_size; v++)
               dof_indices_contiguous[3].push_back(
                 info
-                  .cells_ecl[i * info.max_batch_size *
-                               dealii::GeometryInfo<dim>::faces_per_cell +
-                             d * info.max_batch_size + v]
+                  .cells_exterior_ecl
+                    [i * info.max_batch_size *
+                       dealii::GeometryInfo<dim>::faces_per_cell +
+                     d * info.max_batch_size + v]
                   .gid);
       }
 
