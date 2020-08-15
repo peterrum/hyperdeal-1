@@ -69,7 +69,7 @@ namespace hyperdeal
         process_face(const VectorOperation &      operation,
                      const std::vector<double *> &data_others,
                      VectorizedArrayType *        dst,
-                     const unsigned int           face_no,
+                     const unsigned int *         face_no,
                      const unsigned int           cell_batch_number, // TODO?
                      const unsigned int           cell_side,         //
                      const unsigned int           face_batch_number, //
@@ -160,7 +160,7 @@ namespace hyperdeal
         const VectorOperation &      operation,
         const std::vector<double *> &global,
         VectorizedArrayType *        local,
-        const unsigned int           face_no,
+        const unsigned int *         face_no,
         const unsigned int           cell_batch_number, // TODO: names?
         const unsigned int           cell_side,         //
         const unsigned int           face_batch_number, //
@@ -200,7 +200,7 @@ namespace hyperdeal
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                   for (unsigned int v = 0; v < v_len; ++v)
                     operation.process_dof(
-                      global_ptr[v][face_to_cell_index_nodal[face_no][i]],
+                      global_ptr[v][face_to_cell_index_nodal[face_no[0]][i]],
                       local[i][v]);
               }
           }
@@ -221,7 +221,8 @@ namespace hyperdeal
                   // case 2: read from shared memory
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
                     operation.process_dof(
-                      global_ptr[v][face_to_cell_index_nodal[face_no][i]],
+                      global_ptr[v][face_to_cell_index_nodal
+                                      [face_no[face_side == 3 ? v : 0]][i]],
                       local[i][v]);
                 }
             }

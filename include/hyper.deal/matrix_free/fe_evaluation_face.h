@@ -251,10 +251,10 @@ namespace hyperdeal
               src.other_values(),
               data,
               (is_ecl == false || this->is_minus_face) ?
-                this->face_no :
-                this->matrix_free.get_face_info()
-                  .no_faces[3][(2 * dim * this->macro + this->face_no) *
-                               n_vectors],
+                &this->face_no :
+                &this->matrix_free.get_face_info()
+                   .no_faces[3][(2 * dim * this->macro + this->face_no) *
+                                n_vectors],
               this->macro,
               is_ecl ? 2 : !is_minus_face,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
@@ -317,7 +317,7 @@ namespace hyperdeal
                 VectorDistributorLocalToGlobal<Number, VectorizedArrayType>(),
               dst.other_values(),
               &this->data[0],
-              this->face_no,
+              &this->face_no,
               this->macro,
               !is_minus_face,
               this->macro,
@@ -488,7 +488,7 @@ namespace hyperdeal
     /**
      * Face number < dim * 2.
      */
-    int face_no;
+    unsigned int face_no;
 
     // clang-format off
     dealii::FEEvaluation<dim_x, degree, n_points, 1, Number, typename PARENT::VectorizedArrayTypeX> phi_x;
