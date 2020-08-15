@@ -823,8 +823,8 @@ namespace hyperdeal
 
       // create tensor product
       internal::combine_global_cell_info(
-        matrix_free_x.get_vector_partitioner(/*TODO*/)->get_mpi_communicator(),
-        matrix_free_v.get_vector_partitioner(/*TODO*/)->get_mpi_communicator(),
+        matrix_free_x.get_task_info().communicator,
+        matrix_free_v.get_task_info().communicator,
         info_x,
         info_v,
         info,
