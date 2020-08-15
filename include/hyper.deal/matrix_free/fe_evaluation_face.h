@@ -241,6 +241,17 @@ namespace hyperdeal
     {
       if (this->matrix_free.are_ghost_faces_supported())
         {
+          // for comments see dealii::FEEvaluation::reinit
+          const unsigned int face_orientation =
+            is_ecl ? 0 :
+                     ((this->is_minus_face ==
+                       (this->matrix_free.get_face_info()
+                          .face_orientations[0][this->macro] >= 8)) ?
+                        (this->matrix_free.get_face_info()
+                           .face_orientations[0][this->macro] %
+                         8) :
+                        0);
+
           internal::MatrixFreeFunctions::ReadWriteOperation<Number>(
             this->matrix_free.get_dof_info(),
             this->matrix_free.get_face_info(),
@@ -255,6 +266,7 @@ namespace hyperdeal
                 &this->matrix_free.get_face_info()
                    .no_faces[3][(2 * dim * this->macro + this->face_no) *
                                 n_vectors],
+              &face_orientation,
               this->macro,
               is_ecl ? 2 : !is_minus_face,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
@@ -308,6 +320,17 @@ namespace hyperdeal
 
       if (this->matrix_free.are_ghost_faces_supported())
         {
+          // for comments see dealii::FEEvaluation::reinit
+          const unsigned int face_orientation =
+            is_ecl ? 0 :
+                     ((this->is_minus_face ==
+                       (this->matrix_free.get_face_info()
+                          .face_orientations[0][this->macro] >= 8)) ?
+                        (this->matrix_free.get_face_info()
+                           .face_orientations[0][this->macro] %
+                         8) :
+                        0);
+
           internal::MatrixFreeFunctions::ReadWriteOperation<Number>(
             this->matrix_free.get_dof_info(),
             this->matrix_free.get_face_info(),
@@ -318,6 +341,7 @@ namespace hyperdeal
               dst.other_values(),
               &this->data[0],
               &this->face_no,
+              &face_orientation,
               this->macro,
               !is_minus_face,
               this->macro,

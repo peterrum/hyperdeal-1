@@ -70,6 +70,7 @@ namespace hyperdeal
                      const std::vector<double *> &data_others,
                      VectorizedArrayType *        dst,
                      const unsigned int *         face_no,
+                     const unsigned int *         face_orientation,
                      const unsigned int           cell_batch_number, // TODO?
                      const unsigned int           cell_side,         //
                      const unsigned int           face_batch_number, //
@@ -161,6 +162,7 @@ namespace hyperdeal
         const std::vector<double *> &global,
         VectorizedArrayType *        local,
         const unsigned int *         face_no,
+        const unsigned int *         face_orientation,
         const unsigned int           cell_batch_number, // TODO: names?
         const unsigned int           cell_side,         //
         const unsigned int           face_batch_number, //
@@ -170,6 +172,8 @@ namespace hyperdeal
         static const unsigned int v_len = VectorizedArrayType::size();
         static const unsigned int n_dofs_per_face =
           dealii::Utilities::pow<unsigned int>(degree + 1, dim - 1);
+
+        (void)face_orientation; // TODO: use
 
         std::array<Number *, v_len> global_ptr;
         for (unsigned int v = 0;
