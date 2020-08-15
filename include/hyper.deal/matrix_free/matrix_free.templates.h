@@ -174,18 +174,18 @@ namespace hyperdeal
                                d * info.max_batch_size + v <
                              info.cells_exterior_ecl.size(),
                            dealii::ExcMessage("Out of range!"));
-                    const auto cell_info =
-                      info
-                        .cells_exterior_ecl[i * info.max_batch_size * 2 * dim +
-                                            d * info.max_batch_size + v];
-                    unsigned int gid = cell_info.gid;
+
+                    const unsigned int index =
+                      i * info.max_batch_size * 2 * dim +
+                      d * info.max_batch_size + v;
+
+                    const auto cell_info   = info.cells_exterior_ecl[index];
+                    const unsigned int gid = cell_info.gid;
                     if (gid == dealii::numbers::invalid_unsigned_int)
                       continue;
                     if (gid < i_min || i_max < gid)
                       ghosts_faces.emplace_back(
-                        gid,
-                        cell_info.rank,
-                        d ^ 1); // TODO: only for structural mesh
+                        gid, cell_info.rank, info.exterior_face_no_ecl[index]);
                   }
           }
         else
@@ -195,7 +195,7 @@ namespace hyperdeal
                 {
                   const auto cell_info =
                     info.cells_interior[i * info.max_batch_size + v];
-                  unsigned int gid = cell_info.gid;
+                  const unsigned int gid = cell_info.gid;
                   if (gid < i_min || i_max < gid)
                     ghosts_faces.emplace_back(gid,
                                               cell_info.rank,
@@ -606,7 +606,7 @@ namespace hyperdeal
                       info.cells_exterior_ecl.emplace_back(
                         translator.translate(cell_x, cell_y));
                       info.exterior_face_no_ecl.emplace_back(
-                        info_x.exterior_face_no_ecl[index]); // TODO?
+                        info_x.exterior_face_no_ecl[index]);
                       info.face_orientation_ecl.emplace_back(
                         info_x.face_orientation_ecl[index]); // TODO?
                     }
@@ -633,7 +633,7 @@ namespace hyperdeal
                       info.cells_exterior_ecl.emplace_back(
                         translator.translate(cell_x, cell_y));
                       info.exterior_face_no_ecl.emplace_back(
-                        info_v.exterior_face_no_ecl[index]); // TODO?
+                        info_v.exterior_face_no_ecl[index] + 2 * dim_x);
                       info.face_orientation_ecl.emplace_back(
                         info_v.face_orientation_ecl[index]); // TODO?
                     }
