@@ -131,12 +131,28 @@ namespace hyperdeal
       }
     };
 
+    /**
+     * Helper class to create a list of ghost faces.
+     */
     struct GlobalCellInfoProcessor
     {
+      /**
+       * Constructor.
+       */
       GlobalCellInfoProcessor(const GlobalCellInfo &info)
         : info(info)
       {}
 
+      /**
+       * Compute ghost faces.
+       */
+      std::vector<FaceInfo>
+      get_ghost_faces(const int dim, const bool ecl = false) const
+      {
+        return get_ghost_faces(get_local_range(), dim, ecl);
+      }
+
+    private:
       std::pair<unsigned int, unsigned int>
       get_local_range() const
       {
@@ -216,12 +232,6 @@ namespace hyperdeal
           }
 
         return ghosts_faces;
-      }
-
-      std::vector<FaceInfo>
-      get_ghost_faces(const int dim, const bool ecl = false) const
-      {
-        return get_ghost_faces(get_local_range(), dim, ecl);
       }
 
       const GlobalCellInfo &info;
@@ -860,21 +870,27 @@ namespace hyperdeal
 
       // 2) collect ghost faces and group them for each cell
       {
-        const internal::GlobalCellInfoProcessor gcip(info);
-        auto ghost_faces = gcip.get_ghost_faces(dim, this->use_ecl);
+        // a) get ghost faces
+        auto ghost_faces =
+          internal::GlobalCellInfoProcessor(info).get_ghost_faces(
+            dim, this->use_ecl);
 
+        // b) sort them
         std::sort(ghost_faces.begin(),
                   ghost_faces.end(),
                   [](const auto &a, const auto &b) {
+                    // according to global id of corresponding cell ...
                     if (a.gid < b.gid)
                       return true;
 
+                    // ... and face number
                     if (a.gid == b.gid && a.no < b.no)
                       return true;
 
                     return false;
                   });
 
+        // c) group them
         if (ghost_faces.size() > 0)
           {
             auto ptr = ghost_faces.begin();
