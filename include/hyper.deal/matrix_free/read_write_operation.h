@@ -61,7 +61,8 @@ namespace hyperdeal
         /**
          * TODO.
          */
-        template <int dim,
+        template <int dim_x,
+                  int dim_v,
                   int degree,
                   typename VectorOperation,
                   typename VectorizedArrayType>
@@ -71,6 +72,7 @@ namespace hyperdeal
                      VectorizedArrayType *        dst,
                      const unsigned int *         face_no,
                      const unsigned int *         face_orientation,
+                     const unsigned int           face_orientation_offset,
                      const unsigned int           cell_batch_number, // TODO?
                      const unsigned int           cell_side,         //
                      const unsigned int           face_batch_number, //
@@ -86,6 +88,7 @@ namespace hyperdeal
         const std::array<std::vector<bool>, 4> &face_all;
 
         const std::vector<std::vector<unsigned int>> &face_to_cell_index_nodal;
+        const std::vector<std::vector<unsigned int>> &face_orientations;
       };
 
 
@@ -101,6 +104,7 @@ namespace hyperdeal
         , face_type(face_info.face_type)
         , face_all(face_info.face_all)
         , face_to_cell_index_nodal(shape_info.face_to_cell_index_nodal)
+        , face_orientations(shape_info.face_orientations)
       {}
 
 
@@ -152,7 +156,8 @@ namespace hyperdeal
 
 
       template <typename Number>
-      template <int dim,
+      template <int dim_x,
+                int dim_v,
                 int degree,
                 typename VectorOperation,
                 typename VectorizedArrayType>
@@ -163,17 +168,17 @@ namespace hyperdeal
         VectorizedArrayType *        local,
         const unsigned int *         face_no,
         const unsigned int *         face_orientation,
+        const unsigned int           face_orientation_offset,
         const unsigned int           cell_batch_number, // TODO: names?
         const unsigned int           cell_side,         //
         const unsigned int           face_batch_number, //
         const unsigned int           face_side          //
         ) const
       {
+        static const unsigned int dim   = dim_x + dim_v;
         static const unsigned int v_len = VectorizedArrayType::size();
         static const unsigned int n_dofs_per_face =
           dealii::Utilities::pow<unsigned int>(degree + 1, dim - 1);
-
-        (void)face_orientation; // TODO: use
 
         std::array<Number *, v_len> global_ptr;
         for (unsigned int v = 0;
@@ -191,21 +196,38 @@ namespace hyperdeal
               v_len &&
             face_all[face_side][face_batch_number])
           {
+            const auto &face_orientations_ =
+              face_orientations[face_orientation[0] + face_orientation_offset];
+
             if (face_type[face_side][v_len * face_batch_number])
               {
                 // case 1: read from buffers
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                  for (unsigned int v = 0; v < v_len; ++v)
-                    operation.process_dof(global_ptr[v][i], local[i][v]);
+                  {
+                    const unsigned int i_ = ((dim_x <= 2) && (dim_v <= 2) ||
+                                             face_orientation[0] == 0) ?
+                                              i :
+                                              face_orientations_[i];
+
+                    for (unsigned int v = 0; v < v_len; ++v)
+                      operation.process_dof(global_ptr[v][i], local[i_][v]);
+                  }
               }
             else
               {
                 // case 2: read from shared memory
                 for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                  for (unsigned int v = 0; v < v_len; ++v)
-                    operation.process_dof(
-                      global_ptr[v][face_to_cell_index_nodal[face_no[0]][i]],
-                      local[i][v]);
+                  {
+                    const unsigned int i_ = ((dim_x <= 2) && (dim_v <= 2) ||
+                                             face_orientation[0] == 0) ?
+                                              i :
+                                              face_orientations_[i];
+
+                    for (unsigned int v = 0; v < v_len; ++v)
+                      operation.process_dof(
+                        global_ptr[v][face_to_cell_index_nodal[face_no[0]][i]],
+                        local[i_][v]);
+                  }
               }
           }
         else
@@ -214,20 +236,40 @@ namespace hyperdeal
                v < v_len;
                v++)
             {
+              const auto &face_orientations_ =
+                face_orientations[face_orientation[face_side == 3 ? v : 0] +
+                                  face_orientation_offset];
+
               if (face_type[face_side][v_len * face_batch_number + v])
                 {
                   // case 1: read from buffers
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                    operation.process_dof(global_ptr[v][i], local[i][v]);
+                    {
+                      const unsigned int i_ =
+                        ((dim_x <= 2) && (dim_v <= 2) ||
+                         face_orientation[face_side == 3 ? v : 0] == 0) ?
+                          i :
+                          face_orientations_[i];
+
+                      operation.process_dof(global_ptr[v][i], local[i_][v]);
+                    }
                 }
               else
                 {
                   // case 2: read from shared memory
                   for (unsigned int i = 0; i < n_dofs_per_face; ++i)
-                    operation.process_dof(
-                      global_ptr[v][face_to_cell_index_nodal
-                                      [face_no[face_side == 3 ? v : 0]][i]],
-                      local[i][v]);
+                    {
+                      const unsigned int i_ =
+                        ((dim_x <= 2) && (dim_v <= 2) ||
+                         face_orientation[face_side == 3 ? v : 0] == 0) ?
+                          i :
+                          face_orientations_[i];
+
+                      operation.process_dof(
+                        global_ptr[v][face_to_cell_index_nodal
+                                        [face_no[face_side == 3 ? v : 0]][i]],
+                        local[i_][v]);
+                    }
                 }
             }
       }

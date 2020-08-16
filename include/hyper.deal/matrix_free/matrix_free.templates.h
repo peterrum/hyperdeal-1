@@ -818,7 +818,7 @@ namespace hyperdeal
     const int dim = dim_x + dim_v;
 
     // set up shape_info
-    this->shape_info.template reinit<dim>(
+    this->shape_info.template reinit<dim_x, dim_v>(
       matrix_free_x.get_shape_info().data.front().fe_degree);
 
     // collect (global) information of each macro cell in phase space

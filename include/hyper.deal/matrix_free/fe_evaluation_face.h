@@ -256,7 +256,7 @@ namespace hyperdeal
             this->matrix_free.get_dof_info(),
             this->matrix_free.get_face_info(),
             this->matrix_free.get_shape_info())
-            .template process_face<dim, degree>(
+            .template process_face<dim_x, dim_v, degree>(
               internal::MatrixFreeFunctions::
                 VectorReader<Number, VectorizedArrayType>(),
               src.other_values(),
@@ -270,6 +270,7 @@ namespace hyperdeal
                 &face_orientation :
                 &this->matrix_free.get_face_info().face_orientations
                    [3][(2 * dim * this->macro + this->face_no) * n_vectors],
+              this->type == SpaceType::X ? 0 : 8,
               this->macro,
               is_ecl ? 2 : !is_minus_face,
               is_ecl ? 2 * dim * this->macro + this->face_no : this->macro,
@@ -338,13 +339,14 @@ namespace hyperdeal
             this->matrix_free.get_dof_info(),
             this->matrix_free.get_face_info(),
             this->matrix_free.get_shape_info())
-            .template process_face<dim, degree>(
+            .template process_face<dim_x, dim_v, degree>(
               internal::MatrixFreeFunctions::
                 VectorDistributorLocalToGlobal<Number, VectorizedArrayType>(),
               dst.other_values(),
               &this->data[0],
               &this->face_no,
               &face_orientation,
+              this->type == SpaceType::X ? 0 : 8,
               this->macro,
               !is_minus_face,
               this->macro,
