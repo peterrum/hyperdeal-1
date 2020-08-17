@@ -108,19 +108,19 @@ namespace hyperdeal
                       // face_orientation=true,  face_flip=false, face_rotation=false
                       face_orientations[0][c] = c;
                       // face_orientation=false, face_flip=false, face_rotation=false
-                      face_orientations[1][c] = j           +           k * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[1][c] = j           +           k * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=true,  face_flip=true, face_rotation=false
-                      face_orientations[2][c] = (n - 1 - k) + (n - 1 - j) * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[2][c] = (n - 1 - k) + (n - 1 - j) * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=false, face_flip=true, face_rotation=false
-                      face_orientations[3][c] = (n - 1 - j) + (n - 1 - k) * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[3][c] = (n - 1 - j) + (n - 1 - k) * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=true,  face_flip=false, face_rotation=true
-                      face_orientations[4][c] =           j + (n - 1 - k) * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[4][c] =           j + (n - 1 - k) * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=false, face_flip=false, face_rotation=true
-                      face_orientations[5][c] =           k + (n - 1 - j) * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[5][c] =           k + (n - 1 - j) * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=true,  face_flip=true, face_rotation=true
-                      face_orientations[6][c] = (n - 1 - j) +           k * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[6][c] = (n - 1 - j) +           k * n + i * dealii::Utilities::pow(points, 2);
                       // face_orientation=false, face_flip=true, face_rotation=true
-                      face_orientations[7][c] = (n - 1 - k) +           j * n + i * dealii::Utilities::pow(points, dim_v);
+                      face_orientations[7][c] = (n - 1 - k) +           j * n + i * dealii::Utilities::pow(points, 2);
                     }
             else
               for (unsigned int c = 0; c < dealii::Utilities::pow(points, dim - 1); ++c)
