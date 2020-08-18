@@ -18,14 +18,21 @@ namespace hyperdeal
         /**
          * Caches the face number of a macro face.
          *
-         * @note (0) FCL (interior); (1) FCL (exterior); (2) TODO; (3) TODO
+         * @note (0) FCL (interior); (1) FCL (exterior);
+         *       (2) empty (ECL - interior); (3) ECL (exterior)
          */
         std::array<std::vector<unsigned int>, 4> no_faces;
 
         /**
-         * Caches the face orientation of a macro face.
+         * Caches the face orientations of a macro faces.
          *
-         * @note TODO
+         * The values is copied directly from the faces of the low-dimensional
+         * faces. At this place, no distinguish is done if a face is x- or
+         * v-face since this can be done directly in
+         * hyperdeal::FEFaceEvaluation.
+         *
+         * @note (0) FCL (interior); (1) empty (FCL - exterior);
+         *       (2) empty (ECL - interior); (3) ECL (exterior)
          */
         std::array<std::vector<unsigned int>, 4> face_orientations;
 
@@ -36,7 +43,7 @@ namespace hyperdeal
          * cells owned by a process in the same shared memory domain.
          *
          * @note (0) FCL (interior); (1) FCL (exterior);
-         *       (2) empty (TODO - remove); (3) ECL (exterior)
+         *       (2) empty (ECL - interior); (3) ECL (exterior)
          */
         std::array<std::vector<bool>, 4> face_type;
 
@@ -45,7 +52,7 @@ namespace hyperdeal
          * orientation when vectorizing.
          *
          * @note (0) FCL (interior); (1) FCL (exterior);
-         *       (2) empty (TODO - remove); (3) ECL (exterior)
+         *       (2) empty (ECL - interior); (3) ECL (exterior)
          */
         std::array<std::vector<bool>, 4> face_all;
 

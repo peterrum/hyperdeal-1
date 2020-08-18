@@ -29,7 +29,8 @@ namespace hyperdeal
     namespace MatrixFreeFunctions
     {
       /**
-       * TODO.
+       * Helper class for transferring data from global to cell-local vectors
+       * and vice versa.
        */
       template <typename Number>
       class ReadWriteOperation
@@ -45,7 +46,8 @@ namespace hyperdeal
             &shape_info);
 
         /**
-         * TODO.
+         * Transfer data for a (macro-)cell. If dofs are read, write, or
+         * distributed is determined by @p operation.
          */
         template <int dim,
                   int degree,
@@ -59,7 +61,22 @@ namespace hyperdeal
 
 
         /**
-         * TODO.
+         * Transfer data for a (macro-)face. If dofs are read, write, or
+         * distributed is determined by @p operation.
+         *
+         * The complexity compared to process_cell (additional arguments) rises
+         * due to the fact:
+         * - faces are relevant in different context: ECL/FCL interior/exterior
+         * - that faces might be embedded within cells (e.g., interior faces)
+         *   or might be stored on their own (ghost faces). In the first case,
+         *   the dofs from @p face_no have to be extracted.
+         * - faces might be not orientated in relation to the neighbor, which
+         *   requires a re-orientation here.
+         * - In comparison to FCL and ECL interior faces, each faces
+         *   of a ECL exterior macro face might have a different orientation
+         *   and face number.
+         *
+         * @note For a detailed discussion, see the documentation of deal.II.
          */
         template <int dim_x,
                   int dim_v,
@@ -73,11 +90,10 @@ namespace hyperdeal
                      const unsigned int *         face_no,
                      const unsigned int *         face_orientation,
                      const unsigned int           face_orientation_offset,
-                     const unsigned int           cell_batch_number, // TODO?
-                     const unsigned int           cell_side,         //
-                     const unsigned int           face_batch_number, //
-                     const unsigned int           face_side          //
-                     ) const;
+                     const unsigned int           cell_batch_number,
+                     const unsigned int           cell_side,
+                     const unsigned int           face_batch_number,
+                     const unsigned int           face_side) const;
 
       private:
         const std::array<std::vector<unsigned char>, 4>
@@ -169,11 +185,10 @@ namespace hyperdeal
         const unsigned int *         face_no,
         const unsigned int *         face_orientation,
         const unsigned int           face_orientation_offset,
-        const unsigned int           cell_batch_number, // TODO: names?
-        const unsigned int           cell_side,         //
-        const unsigned int           face_batch_number, //
-        const unsigned int           face_side          //
-        ) const
+        const unsigned int           cell_batch_number,
+        const unsigned int           cell_side,
+        const unsigned int           face_batch_number,
+        const unsigned int           face_side) const
       {
         static const unsigned int dim   = dim_x + dim_v;
         static const unsigned int v_len = VectorizedArrayType::size();
