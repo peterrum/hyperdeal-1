@@ -697,8 +697,7 @@ namespace hyperdeal
                 info.faces_fill.push_back(info_x.faces_fill[i_x]);
 
                 info.interior_face_no.push_back(info_x.interior_face_no[i_x]);
-                info.face_orientation.push_back(
-                  info_x.face_orientation[i_x]); // TODO?
+                info.face_orientation.push_back(info_x.face_orientation[i_x]);
               }
 
         // interior faces (cell x face):
@@ -723,8 +722,7 @@ namespace hyperdeal
 
                 info.interior_face_no.push_back(info_v.interior_face_no[i_v] +
                                                 2 * dim_x);
-                info.face_orientation.push_back(info_v.face_orientation[i_v] +
-                                                2 * dim_x); // TODO?
+                info.face_orientation.push_back(info_v.face_orientation[i_v]);
               }
       }
 
