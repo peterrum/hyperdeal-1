@@ -62,6 +62,11 @@ namespace hyperdeal
                   input[e] * weights[k * stride];
           }
     }
+    
+    enum class AdvectionOperationEvaluationLevel
+    {
+        cell, all_without_neighbor_load, all
+    };
 
 
 
@@ -138,6 +143,7 @@ namespace hyperdeal
       /**
        * Apply operator. Depending on configuration ECL or FCL.
        */
+      template<AdvectionOperationEvaluationLevel eval_level = AdvectionOperationEvaluationLevel::all>
       void
       apply(VectorType &      dst,
             const VectorType &src,
@@ -197,12 +203,15 @@ namespace hyperdeal
 
             // advection and inverse-mass matrix operator in one go
             data.loop_cell_centric(
-              &This::local_apply_advect_and_inverse_mass_matrix,
+              &This::local_apply_advect_and_inverse_mass_matrix<eval_level>,
               this,
               dst,
               src,
+              eval_level == AdvectionOperationEvaluationLevel::all ?
               MatrixFree<dim_x, dim_v, Number, VectorizedArrayType>::
-                DataAccessOnFaces::values,
+                DataAccessOnFaces::values : 
+              MatrixFree<dim_x, dim_v, Number, VectorizedArrayType>::
+                DataAccessOnFaces::none,
               timers);
 
             if (timers != nullptr)
@@ -217,6 +226,7 @@ namespace hyperdeal
       /**
        * Advection + inverse mass-matrix cell operation -> ECL.
        */
+      template<AdvectionOperationEvaluationLevel eval_level = AdvectionOperationEvaluationLevel::all>
       void
       local_apply_advect_and_inverse_mass_matrix(
         const MatrixFree<dim_x, dim_v, Number, VectorizedArrayType> &data,
@@ -295,6 +305,8 @@ namespace hyperdeal
 
           // copy quadrature values into buffer
           VNumber *buffer = phi_cell_inv->get_data_ptr();
+          
+          if(eval_level != AdvectionOperationEvaluationLevel::cell)
           for (auto i = 0u; i < dealii::Utilities::pow<unsigned int>(n_points, dim); i++)
             buffer[i] = data_ptr[i];
 
@@ -338,6 +350,7 @@ namespace hyperdeal
         }
 
         // 2) advection: faces (TODO: boundary not supported)
+        if(eval_level != AdvectionOperationEvaluationLevel::cell)
         for (auto face = 0u; face < dim * 2; face++)
           {
             this->velocity_field->reinit_face(cell, face);
@@ -347,7 +360,9 @@ namespace hyperdeal
 
             // load positive side from global structure
             phi_p.reinit(cell, face);
-            phi_p.read_dof_values(src);
+            
+            if(eval_level == AdvectionOperationEvaluationLevel::all)
+              phi_p.read_dof_values(src);
 #ifndef COLLOCATION
             const auto weights = &shi_get.data[0].shape_values[face % 2 == 0 ? 0 : (n_points - 1)];
             if (dim >= 1 && face / 2 == 0) interpolate_to_face<dim, n_points, 0, true, n_points>(data_ptr1, data_ptr_inv, weights); else

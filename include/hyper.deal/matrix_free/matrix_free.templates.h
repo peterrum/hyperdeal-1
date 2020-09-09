@@ -1158,6 +1158,7 @@ namespace hyperdeal
                 partitions[flag].emplace_back(i, j * v_len + v, i0);
               }
 
+        if(dealii::Utilities::MPI::this_mpi_process(comm) == 0)
         std::cout << partitions[0].size() << " " << partitions[1].size() << " "
                   << partitions[2].size() << " " << std::endl;
       }
@@ -1294,7 +1295,7 @@ namespace hyperdeal
     const DataAccessOnFaces src_vector_face_access,
     Timers *                timers) const
   {
-    AssertThrow(src_vector_face_access == DataAccessOnFaces::values,
+    AssertThrow(src_vector_face_access == DataAccessOnFaces::values || src_vector_face_access == DataAccessOnFaces::none,
                 dealii::StandardExceptions::ExcNotImplemented());
 
     const auto part =
@@ -1312,6 +1313,8 @@ namespace hyperdeal
       for (unsigned int i = 0; i < this->partitions.size(); ++i)
         {
           // perform pre-processing step for partition
+          if(src_vector_face_access == DataAccessOnFaces::values)
+          {
           if (i == 0)
             {
               if (timers != nullptr)
@@ -1353,6 +1356,7 @@ namespace hyperdeal
               AssertThrow(false,
                           dealii::StandardExceptions::ExcNotImplemented());
             }
+          }
 
           // loop over all cells in partition
           for (const auto &id : this->partitions[i])
@@ -1360,7 +1364,7 @@ namespace hyperdeal
         }
     }
 
-    if (do_buffering == false)
+    if (do_buffering == false && src_vector_face_access == DataAccessOnFaces::values)
       {
         ScopedTimerWrapper timer(timers, "barrier");
         part->sync();
