@@ -34,17 +34,10 @@ namespace hyperdeal
           : dealii::Function<DIM, Number>(1, time)
           , wave_number(2.)
         {
-          advection[0] = 1.;
-          if (DIM > 1)
-            advection[1] = 0.15;
-          if (DIM > 2)
-            advection[2] = -0.05;
-          if (DIM > 3)
-            advection[3] = -0.10;
-          if (DIM > 4)
-            advection[4] = -0.15;
-          if (DIM > 5)
-            advection[5] = 0.5;
+          std::array<Number, 6> temp = {{1., 0.15, -0.05, -0.10, -0.15, 0.5}};
+
+          for (int i = 0; i < DIM; ++i)
+            advection[i] = temp[i];
         }
 
         virtual double
@@ -75,9 +68,6 @@ namespace hyperdeal
         : public hyperdeal::advection::Initializer<dim_x, dim_v, degree, Number>
       {
       public:
-        Initializer()
-        {}
-
         void
         add_parameters(dealii::ParameterHandler &prm)
         {
@@ -102,6 +92,7 @@ namespace hyperdeal
             dealii::GridGenerator::torus(tria, 2.0, 0.5);
             tria.refine_global(n_refinements_x);
           };
+
           const auto fu_v = [&](auto &tria) {
             dealii::GridGenerator::hyper_ball_balanced(tria);
             tria.refine_global(n_refinements_v);
