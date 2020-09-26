@@ -116,19 +116,7 @@ namespace hyperdeal
           std::shared_ptr<BoundaryDescriptor<dim_x + dim_v, Number>>
             boundary_descriptor)
         {
-#if false
-          boundary_descriptor->dirichlet_bc[0] =
-            std::shared_ptr<dealii::Function<dim_x + dim_v, Number>>(
-              new ExactSolution<dim_x + dim_v, Number>());
-
-          // TODO: hack for 1D
-          boundary_descriptor->dirichlet_bc[1] =
-            std::shared_ptr<dealii::Function<dim_x + dim_v, Number>>(
-              new ExactSolution<dim_x + dim_v, Number>());
-#else
           boundary_descriptor->homogeneous_dirichlet_bc.insert(0);
-          boundary_descriptor->homogeneous_dirichlet_bc.insert(1);
-#endif
         }
 
         void

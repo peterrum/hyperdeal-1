@@ -13,6 +13,8 @@
 //
 // ---------------------------------------------------------------------
 
+#include <deal.II/grid/manifold_lib.h>
+
 #include <hyper.deal/grid/grid_generator.h>
 
 namespace hyperdeal
@@ -820,21 +822,17 @@ namespace hyperdeal
 
                 const auto manifold_ids = tria.get_manifold_ids();
                 for (const auto manifold_id : manifold_ids)
-                  {
-                    std::cout << manifold_id << std::endl;
-                    if (manifold_id != dealii::numbers::flat_manifold_id)
-                      {
-                        //                    auto manifold =
-                        //                    tria.get_manifold(manifold_id).clone();
-                        //
-                        //                    if(auto m =
-                        //                    dynamic_cast<TransfiniteInterpolationManifold<dim_x>
-                        //                    >(manifold.get()))
-                        //                        m.initialize(*triangulation_x);
+                  if (manifold_id != dealii::numbers::flat_manifold_id)
+                    {
+                      auto manifold = tria.get_manifold(manifold_id).clone();
 
-                        triangulation_x->set_manifold(manifold_id, manifold);
-                      }
-                  }
+                      if (auto temp = dynamic_cast<
+                            dealii::TransfiniteInterpolationManifold<dim_x> *>(
+                            manifold.get()))
+                        temp->initialize(*triangulation_x);
+
+                      triangulation_x->set_manifold(manifold_id, *manifold);
+                    }
 
                 const auto construction_data =
                   dealii::TriangulationDescription::Utilities::
