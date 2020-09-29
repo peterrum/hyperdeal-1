@@ -89,12 +89,22 @@ namespace hyperdeal
           std::shared_ptr<dealii::parallel::TriangulationBase<dim_v>> &tria_v)
         {
           const auto fu_x = [&](auto &tria) {
-            dealii::GridGenerator::torus(tria, 2.0, 0.5);
+            if constexpr (dim_x == 3)
+              dealii::GridGenerator::torus(tria, 6.2, 2.0); // ITER
+            else
+              AssertThrow(false,
+                          dealii::StandardExceptions::ExcNotImplemented());
             tria.refine_global(n_refinements_x);
           };
 
           const auto fu_v = [&](auto &tria) {
-            dealii::GridGenerator::hyper_ball_balanced(tria);
+            if constexpr (dim_v == 3)
+              dealii::GridGenerator::hyper_ball_balanced(tria,
+                                                         dealii::Point<dim_v>(),
+                                                         5.0);
+            else
+              AssertThrow(false,
+                          dealii::StandardExceptions::ExcNotImplemented());
             tria.refine_global(n_refinements_v);
           };
 

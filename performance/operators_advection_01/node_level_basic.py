@@ -204,6 +204,11 @@ def main():
 
                 # set size limit of the problem
                 limit = 1.0e9
+                
+                if dim == 2 and degree == 2:
+                    limit = 0.1e9;
+                elif degree == 2:
+                    limit = 0.1e9;
 
                 # decompose dimension
                 dim_x = int(dim / 2 + dim % 2)

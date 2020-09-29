@@ -183,8 +183,6 @@ namespace hyperdeal
         const auto my_rank =
           dealii::Utilities::MPI::this_mpi_process(comm_global);
 
-        std::cout << slabel << std::endl;
-
         if (my_rank == 0)
           {
             std::ofstream myfile;

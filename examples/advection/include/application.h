@@ -415,6 +415,12 @@ namespace hyperdeal
 
         unsigned int time_step_counter = 0;
 
+#ifdef PERFORMANCE_TIMING
+        bool performance_timing = true;
+#else
+        bool performance_timing = false;
+#endif
+
         Timers timers(param.performance_log_all_calls);
 
         std::array<Number, 2> error;
@@ -426,14 +432,17 @@ namespace hyperdeal
               const auto  time_step,
               const auto &runnable) {
 #ifdef PERFORMANCE_TIMING
-            if (time_step_counter == param.performance_warm_up_iterations)
+            if (performance_timing)
               {
-                if (time_step_counter != 0)
-                  timers.reset();
-                MPI_Barrier(comm_global);
-                timers["id_total"].start();
+                if (time_step_counter == param.performance_warm_up_iterations)
+                  {
+                    if (time_step_counter != 0)
+                      timers.reset();
+                    MPI_Barrier(comm_global);
+                    timers["id_total"].start();
+                  }
+                time_step_counter++;
               }
-            time_step_counter++;
 #endif
 
             ScopedTimerWrapper timer(timers, "id_stage");
@@ -446,7 +455,7 @@ namespace hyperdeal
           [&](const VectorType &src, VectorType &dst, const Number cur_time) {
             ScopedTimerWrapper timer(timers, "id_advection");
 
-            if (param.performance_log_all_calls)
+            if (performance_timing || param.performance_log_all_calls)
               advection_operation.apply(dst, src, cur_time, &timers);
             else
               advection_operation.apply(dst, src, cur_time);
@@ -496,42 +505,52 @@ namespace hyperdeal
           });
 
 #ifdef PERFORMANCE_TIMING
-        MPI_Barrier(comm_global);
-        timers["id_total"].stop();
-        timers.print(comm_global, pcout);
+        if (performance_timing)
+          {
+            MPI_Barrier(comm_global);
+            timers["id_total"].stop();
+            timers.print(comm_global, pcout);
+          }
 #endif
 
 
         {
 #ifdef PERFORMANCE_TIMING
-          auto &timer = timers["id_stage"];
-          AssertThrow(time_steps == time_step_counter,
-                      dealii::StandardExceptions::ExcMessage(
-                        "Mismatch in time step counter!"));
-          AssertThrow((time_steps - param.performance_warm_up_iterations) ==
-                        timer.get_counter(),
-                      dealii::StandardExceptions::ExcMessage(
-                        "Mismatch in time step counter!"));
+          if (performance_timing)
+            {
+              auto &timer = timers["id_stage"];
+              AssertThrow(time_steps == time_step_counter,
+                          dealii::StandardExceptions::ExcMessage(
+                            "Mismatch in time step counter!"));
+              AssertThrow((time_steps - param.performance_warm_up_iterations) ==
+                            timer.get_counter(),
+                          dealii::StandardExceptions::ExcMessage(
+                            "Mismatch in time step counter!"));
+            }
 #endif
 
           table.set("info->time_steps",
                     time_steps - param.performance_warm_up_iterations);
 
 #ifdef PERFORMANCE_TIMING
-          table.set("throughput [MDoFs/s]",
-                    dof_handler_x->n_dofs() * dof_handler_v->n_dofs() *
-                      timer.get_counter() * time_integrator.n_stages() /
-                      timer.get_accumulated_time());
-          table.set("throughput [MDoFs/s/core]",
-                    dof_handler_x->n_dofs() * dof_handler_v->n_dofs() *
-                      timer.get_counter() * time_integrator.n_stages() /
-                      timer.get_accumulated_time() /
-                      dealii::Utilities::MPI::n_mpi_processes(comm_row) /
-                      dealii::Utilities::MPI::n_mpi_processes(comm_column));
+          if (performance_timing)
+            {
+              auto &timer = timers["id_stage"];
+              table.set("throughput [MDoFs/s]",
+                        dof_handler_x->n_dofs() * dof_handler_v->n_dofs() *
+                          timer.get_counter() * time_integrator.n_stages() /
+                          timer.get_accumulated_time());
+              table.set("throughput [MDoFs/s/core]",
+                        dof_handler_x->n_dofs() * dof_handler_v->n_dofs() *
+                          timer.get_counter() * time_integrator.n_stages() /
+                          timer.get_accumulated_time() /
+                          dealii::Utilities::MPI::n_mpi_processes(comm_row) /
+                          dealii::Utilities::MPI::n_mpi_processes(comm_column));
+            }
 #endif
         }
 
-        if (param.performance_log_all_calls)
+        if (performance_timing && param.performance_log_all_calls)
           {
 #ifdef PERFORMANCE_TIMING
             timers.print_log(comm_global,

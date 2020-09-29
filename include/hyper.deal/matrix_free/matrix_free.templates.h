@@ -1257,22 +1257,17 @@ namespace hyperdeal
     if (zero_out_values && do_ghosts)
       {
         vec.zero_out_ghosts();
-        
+
         dealii::AlignedVector<Number> buffer;
         std::vector<MPI_Request>      requests;
-        
+
         this->partitioner->export_to_ghosted_array_start(
-          0, 
-          vec.begin(), 
-          vec.other_values(), 
-          buffer, 
-          requests);
-        
-        this->partitioner->export_to_ghosted_array_finish(
-          vec.begin(),
-          vec.other_values(),
-          requests);
-        
+          0, vec.begin(), vec.other_values(), buffer, requests);
+
+        this->partitioner->export_to_ghosted_array_finish(vec.begin(),
+                                                          vec.other_values(),
+                                                          requests);
+
         vec.zero_out_ghosts();
       }
 
@@ -1280,18 +1275,18 @@ namespace hyperdeal
     if (zero_out_values && do_ghosts && !use_ecl)
       {
         vec.compress(dealii::VectorOperation::values::add);
-        
+
         dealii::AlignedVector<Number> buffer;
         std::vector<MPI_Request>      requests;
-        
+
         this->partitioner->import_from_ghosted_array_start(
-          dealii::VectorOperation::values::add, 
-          0, 
-          vec.begin(), 
-          vec.other_values(), 
-          buffer, 
+          dealii::VectorOperation::values::add,
+          0,
+          vec.begin(),
+          vec.other_values(),
+          buffer,
           requests);
-        
+
         this->partitioner->import_from_ghosted_array_finish(
           dealii::VectorOperation::values::add,
           vec.begin(),
@@ -1448,7 +1443,10 @@ namespace hyperdeal
                                                          requests);
 
                   if (timers != nullptr)
-                    timers->operator[]("update_ghost_values_1").stop();
+                    {
+                      timers->operator[]("update_ghost_values_1").stop();
+                      timers->operator[]("update_ghost_values_2").start();
+                    }
                 }
               else
                 {
@@ -1462,6 +1460,9 @@ namespace hyperdeal
             cell_operation(*this, dst, src, id);
         }
     }
+
+    if (timers != nullptr)
+      timers->operator[]("update_ghost_values_2").stop();
 
     if (do_buffering == false &&
         src_vector_face_access == DataAccessOnFaces::values)
@@ -1624,7 +1625,8 @@ namespace hyperdeal
       {
         ScopedTimerWrapper timer(timers, "compress");
 
-        dst.compress(dealii::VectorOperation::add); // TODO: use partitioner directly
+        dst.compress(
+          dealii::VectorOperation::add); // TODO: use partitioner directly
       }
     else
       AssertThrow(false, dealii::StandardExceptions::ExcNotImplemented());

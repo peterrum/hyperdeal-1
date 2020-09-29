@@ -31,3 +31,13 @@ run:
 python ~/sw-hyperdeal-update/hyperdeal/examples/advection/performance/weak.py
 ```
 
+run:
+```bash
+python ~/sw-hyperdeal-update/hyperdeal/examples/advection/performance/weak.py --mem
+```
+
+run:
+```bash
+python ~/sw-hyperdeal-update/hyperdeal/examples/advection/performance/weak.py --dist
+```
+

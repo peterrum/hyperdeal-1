@@ -38,7 +38,8 @@
     "Matrixfree": {
         "GhostFaces": "true",
         "DoBuffering": "false",
-        "UseECL": "true"
+        "UseECL": "true", 
+        "OverlappingLevel" : "2"
     },
     "Case": {
         "NRefinementsX": "0",

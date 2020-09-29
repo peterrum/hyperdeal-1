@@ -50,8 +50,8 @@ array=($(ls node{1}/*.json))
 mpirun -np {3} ./advection \"${{array[@]}}\"
 """
 
-def run_instance(dim_x, dim_v, degree, n, c, s):
-    with open(os.path.dirname(os.path.abspath(__file__)) + "/all.json", 'r') as f:
+def run_instance(dim_x, dim_v, degree, n, c):
+    with open(os.path.dirname(os.path.abspath(__file__)) + "/tokamak_all.json", 'r') as f:
        datastore = json.load(f)
 
     N = {"1":[8,6],"2":[12,8],"4":[16,12],"8":[24,16],"16":[32,24],"32":[48,32],"64":[64,48],"128":[96,64],"256":[128,96],"512":[192,128], "1024":[256,192], "2048":[384, 256], "3072" : [384, 384]}
@@ -66,19 +66,8 @@ def run_instance(dim_x, dim_v, degree, n, c, s):
     datastore["General"]["PartitionX"] = NN[0]
     datastore["General"]["PartitionV"] = NN[1]
 
-    datastore["Case"]["NRefinementsX"]       = s[0][0]
-    datastore["Case"]["NSubdivisionsX"]["X"] = s[0][1][0]
-    datastore["Case"]["NSubdivisionsX"]["Y"] = s[0][1][1]
-    
-    if dim_x == 3:
-        datastore["Case"]["NSubdivisionsX"]["Z"] = s[0][1][2]
-
-    datastore["Case"]["NRefinementsV"]       = s[1][0]
-    datastore["Case"]["NSubdivisionsV"]["X"] = s[1][1][0]
-    datastore["Case"]["NSubdivisionsV"]["Y"] = s[1][1][1]
-    
-    if dim_v == 3:
-        datastore["Case"]["NSubdivisionsV"]["Z"] = s[1][1][2]
+    datastore["Case"]["NRefinementsX"]       = int(c / 2) + c %2
+    datastore["Case"]["NRefinementsV"]       = int(c / 2)
 
     # write data to output file
     with open("node%s/inputs%s.json" % (str(n).zfill(4), str(c).zfill(2)), 'w') as f:
@@ -107,7 +96,7 @@ def main():
     dim_v  = args.dim_v;
     degree = args.degree;
 
-    folder_name = "all-%s-%s-%s" %(str(dim_x), str(dim_v), str(degree) )
+    folder_name = "torus-all-%s-%s-%s" %(str(dim_x), str(dim_v), str(degree) )
 
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
@@ -133,11 +122,9 @@ def main():
         
 
         print n
-        for c in range(8,40):
-            if 4 * n*48 <= 2**c:
-                s = compute_grid_pair(dim_x, dim_v, c)
-                print s
-                run_instance(dim_x, dim_v, degree, n, c, s)
+        for c in range(0,20):
+            if 4 * n*48 <= (30 * 32) * 2**c:
+                run_instance(dim_x, dim_v, degree, n, c)
 
 
 if __name__== "__main__":

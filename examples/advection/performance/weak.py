@@ -3,6 +3,7 @@ import argparse, os
 import math
 import subprocess
 import shutil
+import sys 
 
 cmd = """#!/bin/bash
 # Job Name and Files (also --job-name)
@@ -50,7 +51,7 @@ array=($(ls node{1}/*.json))
 mpirun -np {3} ./advection \"${{array[@]}}\"
 """
 
-def run_instance(dim_x, dim_v, degree, n, c, s):
+def run_instance(dim_x, dim_v, degree, n, c, s, mem, dist):
     with open(os.path.dirname(os.path.abspath(__file__)) + "/weak.json", 'r') as f:
        datastore = json.load(f)
 
@@ -75,6 +76,17 @@ def run_instance(dim_x, dim_v, degree, n, c, s):
     datastore["Case"]["NSubdivisionsV"]["X"] = s[1][1][0]
     datastore["Case"]["NSubdivisionsV"]["Y"] = s[1][1][1]
     datastore["Case"]["NSubdivisionsV"]["Z"] = s[1][1][2]
+    
+    if mem:
+        datastore["Matrixfree"]["OverlappingLevel"] = 0
+    else:
+        datastore["Matrixfree"]["OverlappingLevel"] = 2
+    
+    if dist:
+        datastore["TemporalDiscretization"]["PerformanceLogAllCalls"] = True
+        datastore["TemporalDiscretization"]["PerformanceLogAllCallsPrefix"] = "node-%s" % str(n).zfill(4)
+    else:
+        datastore["TemporalDiscretization"]["PerformanceLogAllCalls"] = False
 
     # write data to output file
     with open("node%s/inputs%s.json" % (str(n).zfill(4), str(c).zfill(2)), 'w') as f:
@@ -89,6 +101,14 @@ def compute_grid_pair(dim_x, dim_v, s):
             compute_grid(dim_v, s / (dim_x + dim_v) * dim_v + max(dim_x, s % (dim_x + dim_v)) - dim_x)]
 
 def main():
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mem', help='foo help', action="store_true")
+    parser.add_argument('--dist', help='foo help', action="store_true")
+    args = parser.parse_args()
+
+    if((int(args.mem) + int(args.dist)) > 1):
+        sys.exit("Max one configuration can be selected!") 
 
     # parameters
     dim_x  = 3;
@@ -96,7 +116,12 @@ def main():
     degree = 3;
     shift  = 18; # start with 8^6 cells, e.g., 32^6 dofs
 
-    folder_name = "weak-%s-%s-%s" %(str(dim_x), str(dim_v), str(degree) )
+    if args.mem:
+        folder_name = "weak-%s-%s-%s-mem" %(str(dim_x), str(dim_v), str(degree) )
+    elif args.dist:
+        folder_name = "weak-%s-%s-%s-dist" %(str(dim_x), str(dim_v), str(degree) )
+    else:
+        folder_name = "weak-%s-%s-%s" %(str(dim_x), str(dim_v), str(degree) )
 
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
@@ -105,6 +130,9 @@ def main():
     shutil.copy("../../advection", ".")
 
     for c, n in enumerate([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]):
+
+        if args.dist and n != 64:
+            continue
 
         if not os.path.exists("node%s" % (str(n).zfill(4))):
             os.mkdir("node%s" % (str(n).zfill(4)))
@@ -124,8 +152,7 @@ def main():
 
         s = compute_grid_pair(dim_x, dim_v, c + shift)
         print s
-        run_instance(dim_x, dim_v, degree, n, c + shift, s)
-
+        run_instance(dim_x, dim_v, degree, n, c + shift, s, args.mem, args.dist)
 
 if __name__== "__main__":
   main()
