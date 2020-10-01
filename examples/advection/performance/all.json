@@ -33,12 +33,13 @@
         "DiagnosticsWarmUpIterations": "10"
     },
     "AdvectionOperation": {
-        "SkewFactor": "0.0"
+        "SkewFactor": "0.5"
     },
     "Matrixfree": {
         "GhostFaces": "true",
         "DoBuffering": "false",
-        "UseECL": "true"
+        "UseECL": "true", 
+        "OverlappingLevel" : "2"
     },
     "Case": {
         "NRefinementsX": "0",

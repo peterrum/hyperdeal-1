@@ -30,7 +30,7 @@
     "DoBuffering"        : false,
     "GhostFaces"         : true,
     "UseECL"             : true,
-    "OverlappingLevel"   : 0
+    "OverlappingLevel"   : 2
   },
   "Performance" : {
     "Iterations"       : 10,

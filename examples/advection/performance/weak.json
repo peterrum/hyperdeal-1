@@ -33,7 +33,7 @@
         "DiagnosticsWarmUpIterations": "10"
     },
     "AdvectionOperation": {
-        "SkewFactor": "0.0"
+        "SkewFactor": "0.5"
     },
     "Matrixfree": {
         "GhostFaces": "true",
@@ -46,13 +46,7 @@
         "NRefinementsV": "0",
         "PeriodicX": "true",
         "PeriodicV": "true",
-        "NSubdivisionsX": {
-            "X": "4",
-            "Y": "4"
-        },
-        "NSubdivisionsV": {
-            "X": "4",
-            "Y": "4"
-        }
+        "NSubdivisionsX": {"X": "4", "Y": "4"},
+        "NSubdivisionsV": {"X": "4", "Y": "4"}
     }
 }

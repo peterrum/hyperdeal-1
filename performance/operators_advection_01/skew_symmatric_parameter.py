@@ -47,46 +47,18 @@ module load slurm_setup
 
 pwd
 
-#array=($(ls node{1}/*False_False_True_0.json));
-#mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_0.tmp
+array=($(ls node{1}/*_0.0.json));
+mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_0.0.out
 
+array=($(ls node{1}/*_0.5.json));
+mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_0.5.out
 
+array=($(ls node{1}/*_1.0.json));
+mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_1.0.out
 
-#array=($(ls node{1}/*False_True_True_0.json));
-#mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_1.tmp
-
-
-
-array=($(ls node{1}/*True_False_False_0.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_2_0.tmp
-
-array=($(ls node{1}/*True_False_False_1.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_2_1.tmp
-
-
-
-array=($(ls node{1}/*True_True_True_0.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_3_0.tmp
-
-array=($(ls node{1}/*True_True_True_1.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_3_1.tmp
-
-array=($(ls node{1}/*True_True_True_2.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_3_2.tmp
-
-
-
-array=($(ls node{1}/*True_True_False_0.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_4_0.tmp
-
-array=($(ls node{1}/*True_True_False_1.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_4_1.tmp
-
-array=($(ls node{1}/*True_True_False_2.json));
-mpirun -np {2} ./operators_advection_01 \"${{array[@]}}\" | tee node{1}_4_2.tmp
 """
 
-def run_instance(dim_x, dim_v, degree, n, c, s, sm, buffering, ecl, overlapping):
+def run_instance(dim_x, dim_v, degree, n, c, s, beta):
     with open(os.path.dirname(os.path.abspath(__file__)) + "/matrix_free_loops.json", 'r') as f:
        datastore = json.load(f)
 
@@ -99,6 +71,8 @@ def run_instance(dim_x, dim_v, degree, n, c, s, sm, buffering, ecl, overlapping)
     datastore["General"]["Degree"]     = degree
     datastore["General"]["PartitionX"] = NN[0]
     datastore["General"]["PartitionV"] = NN[1]
+    
+    datastore["AdvectionOperation"]["SkewFactor"] = beta
 
     datastore["Case"]["NRefinementsX"]       = s[0][0]
     datastore["Case"]["NSubdivisionsX"]["X"] = s[0][1][0]
@@ -112,13 +86,8 @@ def run_instance(dim_x, dim_v, degree, n, c, s, sm, buffering, ecl, overlapping)
     if dim_v==3:
         datastore["Case"]["NSubdivisionsV"]["Z"] = s[1][1][2]
     
-    datastore["General"]["UseSharedMemory"]     = sm
-    datastore["MatrixFree"]["DoBuffering"]      = buffering
-    datastore["MatrixFree"]["UseECL"]           = ecl
-    datastore["MatrixFree"]["OverlappingLevel"] = overlapping
-
     # write data to output file
-    with open("./node%s/inputs%s_%s_%s_%s_%s.json" % (str(n).zfill(4), str(c).zfill(2), str(ecl), str(sm), str(buffering), str(overlapping)), 'w') as f:
+    with open("./node%s/inputs%s_%s.json" % (str(n).zfill(4), str(c).zfill(2), beta), 'w') as f:
         json.dump(datastore, f, indent=4, separators=(',', ': '))
 
 def compute_grid(dim, s):
@@ -149,7 +118,7 @@ def main():
     dim_v  = args.dim_v;
     degree = args.degree;
 
-    folder_name = "matrix_free_loops"
+    folder_name = "skew_symmatric_parameter"
 
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
@@ -157,7 +126,10 @@ def main():
 
     shutil.copy("../../operators_advection_01", ".")
 
-    for n in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]:
+    #nodes = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    nodes = [1]
+
+    for n in nodes:
 
         label = ""
         if n <= 16:
@@ -180,17 +152,9 @@ def main():
                 s = compute_grid_pair(dim_x, dim_v, c)
                 print s
                 
-                run_instance(dim_x, dim_v, degree, n, c, s, False, True,  False, 0)
-                run_instance(dim_x, dim_v, degree, n, c, s, True,  True,  False, 0)
-                
-                for i in range(0,2):
-                  run_instance(dim_x, dim_v, degree, n, c, s, False, False, True, i)
-                  
-                for i in range(0,3):
-                  run_instance(dim_x, dim_v, degree, n, c, s, True,  True,  True, i)
-                  
-                for i in range(0,3):
-                  run_instance(dim_x, dim_v, degree, n, c, s, True,  False, True, i)
+                run_instance(dim_x, dim_v, degree, n, c, s, "0.0")
+                run_instance(dim_x, dim_v, degree, n, c, s, "0.5")
+                run_instance(dim_x, dim_v, degree, n, c, s, "1.0")
 
 
 if __name__== "__main__":

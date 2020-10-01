@@ -116,7 +116,7 @@ namespace hyperdeal
         const unsigned int n_points_v = n_points;
 
         table.set("info->dim_x", dim_x);
-        table.set("info->dim_v", dim_x);
+        table.set("info->dim_v", dim_v);
         table.set("info->degree_x", degree_x);
         table.set("info->degree_v", degree_v);
 
